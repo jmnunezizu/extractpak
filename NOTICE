@@ -1,0 +1,25 @@
+extractpak
+
+This utility is derived from the original extractpak.c in timfel/monkey:
+
+    https://github.com/timfel/monkey
+
+The original repository describes extractpak and packpak as simple scripts for
+working with Monkey Island Special Edition pak files. At the time this notice
+was added, the repository listing showed extractpak.c, packpak.c, and readme.md,
+but no LICENSE file.
+
+Substantial local changes include:
+
+- Command-line support for arbitrary pak filenames.
+- Listing and debug modes.
+- Output directory support.
+- Robust handling for leading slash and empty archive paths.
+- Non-fatal handling for per-file write failures.
+- Correct filename table parsing for both Monkey Island Special Edition pak
+  archives.
+- Classic-only extraction for the embedded SCUMM data files.
+
+The MIT License in this repository applies to the local modifications and
+documentation. The original upstream code should be treated as having no
+explicit license unless the upstream author publishes one.
