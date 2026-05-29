@@ -144,6 +144,113 @@ classic/en/monkey2.000
 classic/en/monkey2.001
 ```
 
+## Building Monkey Island 2 Ultimate Talkie Edition on macOS/Linux
+
+This repo includes an experimental native helper for inspecting and reproducing
+the Windows Monkey Island 2 Ultimate Talkie Edition builder without
+Wine or `.bat` execution.
+
+The helper is intentionally conservative. It currently performs the native
+steps that are understood and testable:
+
+- validates the Special Edition and builder inputs
+- extracts `classic/en/monkey2.000` and `classic/en/monkey2.001` from
+  `monkey2.pak` with `extractpak`
+- patches those SCUMM resource files with native `bspatch`
+- extracts WAV files from `Speech.xwb` and `Patch.xwb`
+- processes the `voice.bat` SoX trim/mix steps and converts samples for the
+  selected audio mode
+- builds an experimental ScummVM compressed speech archive for Ogg, FLAC, or MP3
+- copies the builder README into the output folder
+
+Analysis of the Windows builder is documented in
+[docs/mi2-ultimate-talkie-builder-analysis.md](docs/mi2-ultimate-talkie-builder-analysis.md).
+
+Prerequisites:
+
+- `clang`, to build `extractpak`
+- `bspatch`; macOS includes `/usr/bin/bspatch`
+- `python3`, for the native XWB extractor
+- `sox`, for `voice.bat` trim/mix and sample conversion
+- the Monkey Island 2 Special Edition install, including:
+  - `monkey2.pak`
+  - `audio/Speech.xwb`
+  - `audio/Patch.xwb`
+- the extracted `MI2_Ultimate_Talkie_Edition_Builder` folder
+
+Audio mode tools:
+
+- `raw`: `sox`; archive packing is still TODO
+- `ogg`: `sox` with Ogg support, `oggenc`, or `ffmpeg`
+- `flac`: `flac` or `ffmpeg`
+- `mp3`: `lame` or `ffmpeg`
+
+Ogg is the first validated target. FLAC and MP3 use the same compressed ScummVM
+container layout, but have not been tested as thoroughly. Raw `monster.sou`
+generation is still TODO.
+
+Build `extractpak` first:
+
+```bash
+clang extractpak.c -o extractpak
+```
+
+Preview the native build steps without writing output:
+
+```bash
+scripts/build-mi2-talkie.sh \
+  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --dry-run \
+  --verbose
+```
+
+Run the experimental native Ogg build:
+
+```bash
+scripts/build-mi2-talkie.sh \
+  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --verbose
+```
+
+Expected current output:
+
+```text
+monkey2.000
+monkey2.001
+readme.txt
+.work/speech-wav/*.wav
+.work/patch-wav/*.wav
+.work/processed-voice/final-ogg/*.ogg
+monkey2.sog
+```
+
+The complete talkie build needs one generated speech resource:
+
+```text
+monkey2.sof  # FLAC
+monkey2.sog  # Ogg Vorbis, experimental native support
+monkey2.so3  # MP3
+monster.sou  # raw DOS speech
+```
+
+The native helper currently generates the compressed ScummVM archive directly
+from `monster.tbl` and the processed samples. It packs only samples referenced by
+`monster.tbl` and warns about extra generated sample files.
+
+ScummVM instructions:
+
+Add the output folder in ScummVM as the game directory.
+
+Legal note: you must own Monkey Island 2 Special Edition and provide your own
+game files. This repository does not distribute LucasArts game assets or built
+Ultimate Talkie output files.
+
 ## Notes
 
 - Full extraction also writes `.dds` files for `.dxt` assets.
