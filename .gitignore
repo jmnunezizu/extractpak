@@ -1,0 +1,4 @@
+extractpak
+*.o
+*.dSYM/
+.DS_Store
