@@ -286,7 +286,8 @@ Prerequisites:
 - `bspatch`; macOS includes `/usr/bin/bspatch`
 - `python3`
 - `sox` with Ogg/Vorbis write support
-- `ffmpeg`, for XACT WMA/XWMA decoding
+- `ffmpeg`, for WMA/XWMA SFX decoding
+- `vgmstream-cli`, for MI1 XACT music-bank decoding
 - the Monkey Island Special Edition install, including `Monkey1.pak` and the `audio/` XWB files
 - the extracted `MI1_Ultimate_Talkie_Edition_Builder` folder
 
@@ -318,6 +319,7 @@ Expected output:
 monkey.000
 monkey.001
 monkey.sog
+track*.ogg
 readme.txt
 cd_music_ogg/*.ogg
 se_music_ogg/*.ogg
@@ -331,7 +333,19 @@ Optional flags:
 The Ogg path now runs without Wine: patched resources, speech archive, native
 SBL injection, and music are generated locally. The SBL injector verifies the
 rebuilt SCUMM resource structure and reports SHA256 values for the pre/post
-resource files.
+resource files. For a directly usable ScummVM folder, the root `track*.ogg`
+files use classic CD music tracks plus the Special Edition extended ambience
+tracks `25`-`29`, matching the Windows builder's optional root-track workflow.
+The `cd_music_ogg/` and `se_music_ogg/` folders are still kept for comparison
+or manual music selection through ScummVM extra paths.
+
+Resource inspection helpers:
+
+```bash
+python3 -m talkiebuilder inspect mi1 resources --game-dir /tmp/mi1-test
+python3 -m talkiebuilder inspect mi1 room --game-dir /tmp/mi1-test --room 41
+python3 -m talkiebuilder inspect mi1 resource --game-dir /tmp/mi1-test --room 41 --id 71
+```
 
 ScummVM instructions:
 

@@ -83,6 +83,9 @@ Music outputs:
 
 - `cd_music_ogg/` or `cd_music_flac/` for classic CD music.
 - `se_music_ogg/` or `se_music_flac/` for Special Edition music/ambience.
+- The native CLI also copies a default Ogg music set into the output root so
+  the folder is directly usable in ScummVM: classic CD music tracks from
+  `cd_music_ogg/`, plus Special Edition extended ambience tracks `25`-`29`.
 
 DOS/raw-only outputs:
 
@@ -96,6 +99,7 @@ monkey.000
 monkey.001
 monkey.sog
 readme.txt
+track*.ogg
 cd_music_ogg/*.ogg
 se_music_ogg/*.ogg
 .work/speech-wav/*.wav
@@ -218,6 +222,7 @@ Parsed `sbl.bat` commands:
 - 04. `64_sound_SBL_med-drip.wav` -> room `008`, sound `064` child 2; effects: `trim 0.119 0.961`
 - 05. `_cdt_dooropen.wav` -> room `010`, sound `002`; effects: `(none)`
 - 06. `_cdt_doorclose.wav` -> room `010`, sound `003`; effects: `(none)`
+
 - 07. `1_sound_SBL_click.wav` -> room `010`, sound `001`; effects: `trim 0.000 0.017`
 - 08. `43_sound_SBL_vista-kaboom.wav` -> room `011`, sound `043`; effects: `trim 0.000 1.680`
 - 09. `44_sound_SBL_vista-rock-thud.wav` -> room `011`, sound `044`; effects: `trim 0.008 0.553`
@@ -361,11 +366,119 @@ Special Edition music/ambience:
 
 Native status:
 
-- `scripts/extract-xwb.py --decode-wma` handles these music banks by wrapping XACT WMA payloads as RIFF/XWMA and decoding with `ffmpeg`.
+- `scripts/process-mi1-music.sh` decodes `MusicOriginal.xwb`,
+  `MusicNew.xwb`, and `Ambience.xwb` with `vgmstream-cli`.
+- Earlier native builds used `scripts/extract-xwb.py --decode-wma`, which
+  wrapped XACT WMA payloads as RIFF/XWMA and decoded them with `ffmpeg`. That
+  produced structurally valid but audibly corrupt music for MI1 because the
+  wrapper did not reproduce the Windows `unxwb.exe` plus `xWMAEncode` decode
+  path correctly for these music banks.
 - `scripts/process-mi1-music.sh` ports the Ogg path from `cdaudio.bat`.
 - Classic CD output: `cd_music_ogg/track1.ogg` through `track24.ogg`, with `track10.ogg` intentionally absent to match the batch remapping.
 - Special Edition output: `se_music_ogg/track1.ogg` through `track29.ogg`, plus `se_music_ogg/track8_no_sfx.ogg`.
+- The Python CLI copies classic CD tracks into the output root and then overlays
+  the Special Edition extended ambience tracks `25` through `29`. This mirrors
+  the Windows builder's optional `extended_SE_tracks_to_game_folder.bat`
+  behavior while keeping `cd_music_ogg/` and `se_music_ogg/` for manual extra
+  path selection.
 - The music path is Ogg-only for now.
+
+## MI1 Missing Ambience Investigation
+
+The reported missing sounds are not all on the speech/SBL path.
+
+| Sound | Source bank | Source filename | Duration | Room / resource | Type | Native destination |
+| --- | --- | --- | ---: | --- | --- | --- |
+| Opening / exterior waves | `Ambience.xwb` | `AMB_Beach_01` | 114.706576s | external ambience, likely beach/exterior rooms; no SCUMM `SOUN` id in the SBL table | ambience | extracted to `.work/music/ambience-wav/`; not mapped by original `cdaudio.bat` |
+| Opening / exterior seagull chirp | `SFXNew.xwb` | `71_sound_SBL_seagull-cheep` | 0.741950s original, trimmed to 0.660s | room `041`, sound `071` (`000_LECF\041_LFLF_kitchen\008_SOUN_071`) | SFX/SBL | injected into `monkey.001`; reachable through `DSOU` |
+| Opening / exterior seagull whoosh | `SFXNew.xwb` | `70_sound_ADL_seagull-whoosh` | 0.756939s | no `sbl.bat` target; not referenced by `monster.tbl` | SFX | extracted to `.work/sfxnew-wav/`; not injected by the Windows SBL script |
+| SCUMM Bar pirate chatter / crowd | `Ambience.xwb` | `AMB_ScummBar_01` | 114.706576s, trimmed to 89.687s | external music track for SCUMM Bar; no SCUMM `SOUN` id | ambience/music | mixed with `MusicNew.xwb` `track9` to produce `se_music_ogg/track8.ogg` |
+
+Evidence:
+
+- `monster.tbl` contains SCUMM Bar and beach dialogue, but no entries for
+  `AMB_ScummBar_01`, `AMB_Beach_01`, or the seagull SFX names. These are not
+  speech archive samples.
+- `sbl.bat` injects only `71_sound_SBL_seagull-cheep` for the seagull case,
+  into room `041`, sound `071`. It does not inject SCUMM Bar crowd ambience or
+  `70_sound_ADL_seagull-whoosh`.
+- `cdaudio.bat` mixes `AMB_ScummBar_01` into `se_music_%1\track8.%1`.
+- `cdaudio.bat` emits five standalone Special Edition ambience tracks:
+  `track25` through `track29`.
+- `extended_SE_tracks_to_game_folder.bat` moves only `track25` through
+  `track29` from `se_music_ogg/` or `se_music_flac/` into the main game
+  folder. The builder README says the user must add the output folder plus the
+  extra path of the desired music version in ScummVM.
+
+Ambience bank handling:
+
+| Entry | Duration | Native output | Destination |
+| --- | ---: | --- | --- |
+| `AMB_Beach_01` | 114.706576s | `.work/music/ambience-wav/AMB_Beach_01.wav` | no `cdaudio.bat` mapping |
+| `AMB_KitchenDocks_01` | 116.517732s | `.work/music/ambience-wav/AMB_KitchenDocks_01.wav` | no `cdaudio.bat` mapping |
+| `AMB_ScummBar_01` | 114.706576s | temporary trimmed WAV | mixed into `se_music_ogg/track8.ogg`; kept in `se_music_ogg/` for optional extra-path use |
+| `AMB_RiverJungle_01` | WMA bank entry | `.work/music/ambience-wav/AMB_RiverJungle_01.wav` | `se_music_ogg/track25.ogg`, now also copied to root |
+| `AMB_TownNightClock_01` | WMA bank entry | `.work/music/ambience-wav/AMB_TownNightClock_01.wav` | `se_music_ogg/track26.ogg`, now also copied to root |
+| `AMB_TownNight_01` | WMA bank entry | `.work/music/ambience-wav/AMB_TownNight_01.wav` | `se_music_ogg/track27.ogg`, now also copied to root |
+| `AMB_Underwater_01` | WMA bank entry | `.work/music/ambience-wav/AMB_Underwater_01.wav` | `se_music_ogg/track28.ogg`, now also copied to root |
+| `AMB_ShipDeck_01` | 75.836372s | `.work/music/ambience-wav/AMB_ShipDeck_01.wav` | `se_music_ogg/track29.ogg`, now also copied to root |
+
+Pipeline traces:
+
+- SCUMM Bar crowd:
+  `Ambience.xwb/AMB_ScummBar_01` -> decoded WAV -> trimmed to 89.687s ->
+  mixed with `MusicNew.xwb/track9` -> `se_music_ogg/track8.ogg`.
+- SBL seagull chirp:
+  `SFXNew.xwb/71_sound_SBL_seagull-cheep` -> decoded WAV -> SoX trim
+  `0.000 0.660` -> native `wav2sbl` bytes -> room `041`, sound `071` in
+  `monkey.001` -> indexed by `DSOU`.
+- Exterior/beach waves:
+  `Ambience.xwb/AMB_Beach_01` is decoded, but the original Windows
+  `cdaudio.bat` does not assign it to a ScummVM track. This remains documented
+  rather than guessed into an arbitrary track number.
+
+The first root-track implementation copied the complete generated
+`se_music_ogg/` track set into the output root. Runtime testing showed this made
+ScummVM select the Special Edition music tracks as the main CD soundtrack, and
+those tracks sounded like electronic noise in game. The corrected default root
+policy is now:
+
+- `track1.ogg` through the available classic CD music tracks from
+  `cd_music_ogg/`.
+- `track25.ogg` through `track29.ogg` from `se_music_ogg/`, matching
+  `extended_SE_tracks_to_game_folder.bat`.
+
+This keeps the improved external ambience/SFX behavior without replacing the
+classic CD music soundtrack with the full Special Edition music set.
+
+`track1.ogg` trace from the full-SE-root-copy bad build:
+
+| Stage | File | Codec | Rate/channels | Duration | Size |
+| --- | --- | --- | --- | ---: | ---: |
+| Source bank | `MusicNew.xwb` entry `track2` | XACT WMA/XWMA | 44100 Hz stereo | duration field 86.0067s | payload 1,043,406 bytes |
+| Decoded WAV | `.work/music/new-wav/track2.wav` | PCM s16le | 44100 Hz stereo | 84.7528s | 14,950,478 bytes |
+| SE Ogg | `se_music_ogg/track1.ogg` | Vorbis | 44100 Hz stereo | 84.7528s | about 1.0 MB |
+| Bad root Ogg | `track1.ogg` | Vorbis | 44100 Hz stereo | 84.7528s | about 1.0 MB |
+| Correct root Ogg | `cd_music_ogg/track1.ogg` copied to `track1.ogg` | Vorbis | 44100 Hz stereo | 118.503s after batch trim | about 1.2 MB |
+
+`cd_music_ogg/track1.ogg` trace from the native-XWMA bad build:
+
+| Stage | File | Codec | Rate/channels | Duration | Size |
+| --- | --- | --- | --- | ---: | ---: |
+| Source bank | `MusicOriginal.xwb` entry `track2` | XACT WMA/XWMA | 44100 Hz stereo | duration field 120.604s | payload 1,449,175 bytes |
+| Bad decoded WAV | `.work/music/original-wav/track2.wav` from the ffmpeg wrapper path | PCM s16le | 44100 Hz stereo | 118.8397s | 20,963,406 bytes |
+| Bad CD Ogg | `cd_music_ogg/track1.ogg` from the ffmpeg wrapper path | Vorbis | 44100 Hz stereo | 118.503s after batch trim | about 1.2 MB |
+| Correct decoded WAV | `.work/music/original-wav/track2.wav` from `vgmstream-cli -i -S 0` | PCM s16le | 44100 Hz stereo | 120.6044s | 21,274,668 bytes |
+| Correct CD Ogg | `cd_music_ogg/track1.ogg` from the vgmstream path | Vorbis | 44100 Hz stereo | 118.503s after batch trim | about 1.4 MB |
+
+The XWB seek table for `MusicOriginal.xwb` confirms that the bank entries are
+real CD music: `vgmstream-cli` reports `MusicOriginal.xwb` as a 25-stream XACT
+bank containing Windows Media Audio 2 and PCM entries named `track2` through
+`track25`, plus `silence`. The batch deliberately skips the CD data-track
+numbering by converting `track2.wav` to ScummVM `track1.ogg`.
+
+Wine comparison was not performed on this machine because `wine` is not
+installed.
 
 ## XWB Findings
 

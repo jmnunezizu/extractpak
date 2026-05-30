@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from . import mi1, mi2
+from . import mi1, mi1_resources, mi2
 from .runner import BuildError
 
 
@@ -28,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     mi2_parser = games.add_parser("mi2", help="build Monkey Island 2 Ultimate Talkie")
     add_common(mi2_parser)
+    mi1_resources.add_inspect_parser(sub)
     return parser
 
 
@@ -59,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
                     verbose=args.verbose,
                 )
             )
+        elif args.command == "inspect":
+            mi1_resources.run_inspect(args)
         else:
             parser.error("unsupported command")
         return 0
