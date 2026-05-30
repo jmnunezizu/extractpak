@@ -299,6 +299,7 @@ python3 -m talkiebuilder build mi1 \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
+  --music hybrid \
   --verbose
 ```
 
@@ -329,15 +330,19 @@ Optional flags:
 
 - `--skip-sbl`: skip native SBL sound-effect injection.
 - `--skip-music`: skip CD/SE music conversion.
+- `--music cd|hybrid|se`: choose the root `track*.ogg` soundtrack set. The
+  default is `hybrid`.
 
 The Ogg path now runs without Wine: patched resources, speech archive, native
 SBL injection, and music are generated locally. The SBL injector verifies the
 rebuilt SCUMM resource structure and reports SHA256 values for the pre/post
-resource files. For a directly usable ScummVM folder, the root `track*.ogg`
-files use classic CD music tracks plus the Special Edition extended ambience
-tracks `25`-`29`, matching the Windows builder's optional root-track workflow.
-The `cd_music_ogg/` and `se_music_ogg/` folders are still kept for comparison
-or manual music selection through ScummVM extra paths.
+resource files. For a directly usable ScummVM folder, `--music hybrid` writes
+classic CD music tracks to the root and overlays the Special Edition extended
+ambience tracks `25`-`29`, matching the Windows builder's optional root-track
+workflow. `--music cd` writes only `cd_music_ogg/track*.ogg` to the root, while
+`--music se` writes `se_music_ogg/track*.ogg` to the root. The `cd_music_ogg/`
+and `se_music_ogg/` folders are always kept for comparison or manual music
+selection through ScummVM extra paths.
 
 Resource inspection helpers:
 

@@ -83,9 +83,10 @@ Music outputs:
 
 - `cd_music_ogg/` or `cd_music_flac/` for classic CD music.
 - `se_music_ogg/` or `se_music_flac/` for Special Edition music/ambience.
-- The native CLI also copies a default Ogg music set into the output root so
-  the folder is directly usable in ScummVM: classic CD music tracks from
-  `cd_music_ogg/`, plus Special Edition extended ambience tracks `25`-`29`.
+- The native CLI also copies a selected Ogg music set into the output root so
+  the folder is directly usable in ScummVM. The default `--music hybrid` mode
+  uses classic CD music tracks from `cd_music_ogg/`, plus Special Edition
+  extended ambience tracks `25`-`29`.
 
 DOS/raw-only outputs:
 
@@ -376,11 +377,16 @@ Native status:
 - `scripts/process-mi1-music.sh` ports the Ogg path from `cdaudio.bat`.
 - Classic CD output: `cd_music_ogg/track1.ogg` through `track24.ogg`, with `track10.ogg` intentionally absent to match the batch remapping.
 - Special Edition output: `se_music_ogg/track1.ogg` through `track29.ogg`, plus `se_music_ogg/track8_no_sfx.ogg`.
-- The Python CLI copies classic CD tracks into the output root and then overlays
-  the Special Edition extended ambience tracks `25` through `29`. This mirrors
-  the Windows builder's optional `extended_SE_tracks_to_game_folder.bat`
-  behavior while keeping `cd_music_ogg/` and `se_music_ogg/` for manual extra
-  path selection.
+- The Python CLI supports `--music cd|hybrid|se` for root `track*.ogg`
+  selection:
+  - `cd`: copy only `cd_music_ogg/track*.ogg` to the output root.
+  - `hybrid`: copy `cd_music_ogg/track*.ogg`, then overlay
+    `se_music_ogg/track25.ogg` through `track29.ogg`. This is the default and
+    mirrors the Windows builder's optional
+    `extended_SE_tracks_to_game_folder.bat` behavior.
+  - `se`: copy `se_music_ogg/track*.ogg` to the output root.
+- All modes keep `cd_music_ogg/` and `se_music_ogg/` for comparison or manual
+  extra path selection.
 - The music path is Ogg-only for now.
 
 ## MI1 Missing Ambience Investigation
@@ -440,7 +446,7 @@ Pipeline traces:
 The first root-track implementation copied the complete generated
 `se_music_ogg/` track set into the output root. Runtime testing showed this made
 ScummVM select the Special Edition music tracks as the main CD soundtrack, and
-those tracks sounded like electronic noise in game. The corrected default root
+those tracks sounded like electronic noise in game. The default `hybrid` root
 policy is now:
 
 - `track1.ogg` through the available classic CD music tracks from

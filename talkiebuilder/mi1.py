@@ -19,14 +19,15 @@ class BuildOptions:
     builder: Path
     out: Path
     audio: str
+    music: str = "hybrid"
     dry_run: bool = False
     verbose: bool = False
     skip_sbl: bool = False
     skip_music: bool = False
 
 
-def _copy_default_music_to_root(out: Path, audio: str, verbose: bool) -> int:
-    """Expose the Windows builder's ScummVM-friendly default music set."""
+def _copy_default_music_to_root(out: Path, audio: str, music: str, verbose: bool) -> int:
+    """Expose the selected ScummVM root soundtrack set."""
     se_dir = out / f"se_music_{audio}"
     cd_dir = out / f"cd_music_{audio}"
     map_path = out / "music-root-map.txt"
@@ -34,7 +35,10 @@ def _copy_default_music_to_root(out: Path, audio: str, verbose: bool) -> int:
     copied = 0
     mappings: list[tuple[Path, Path, str]] = []
 
-    if cd_dir.is_dir():
+    if music not in ("cd", "hybrid", "se"):
+        raise BuildError(f"unsupported MI1 music mode: {music}")
+
+    if music in ("cd", "hybrid") and cd_dir.is_dir():
         for source in sorted(cd_dir.glob(f"track*.{audio}")):
             target = out / source.name
             shutil.copy2(source, target)
@@ -43,7 +47,7 @@ def _copy_default_music_to_root(out: Path, audio: str, verbose: bool) -> int:
             if verbose:
                 print(f"default music {source} -> {target}")
 
-    if se_dir.is_dir():
+    if music == "hybrid" and se_dir.is_dir():
         for track in range(25, 30):
             source = se_dir / f"track{track}.{audio}"
             if not source.exists():
@@ -54,6 +58,15 @@ def _copy_default_music_to_root(out: Path, audio: str, verbose: bool) -> int:
             mappings.append((target, source, "SE extended ambience"))
             if verbose:
                 print(f"default extended ambience {source} -> {target}")
+
+    if music == "se" and se_dir.is_dir():
+        for source in sorted(se_dir.glob(f"track*.{audio}")):
+            target = out / source.name
+            shutil.copy2(source, target)
+            copied += 1
+            mappings.append((target, source, "Special Edition music"))
+            if verbose:
+                print(f"default SE music {source} -> {target}")
 
     if mappings:
         lines = []
@@ -74,11 +87,17 @@ def _copy_default_music_to_root(out: Path, audio: str, verbose: bool) -> int:
     return copied
 
 
-def _root_music_policy(audio: str) -> str:
-    return (
-        f"available cd_music_{audio}/track*.{audio} plus "
-        f"se_music_{audio}/track25-track29"
-    )
+def _root_music_policy(audio: str, music: str) -> str:
+    if music == "cd":
+        return f"available cd_music_{audio}/track*.{audio}"
+    if music == "hybrid":
+        return (
+            f"available cd_music_{audio}/track*.{audio} plus "
+            f"se_music_{audio}/track25-track29"
+        )
+    if music == "se":
+        return f"available se_music_{audio}/track*.{audio}"
+    return f"unknown music mode: {music}"
 
 
 def _audio_duration(path: Path) -> Optional[float]:
@@ -120,7 +139,7 @@ def _count_root_files(path: Path, pattern: str) -> int:
     return sum(1 for item in path.glob(pattern) if item.is_file()) if path.exists() else 0
 
 
-def _print_audio_diagnostics(out: Path, audio: str, injected: list[dict[str, object]] | None) -> None:
+def _print_audio_diagnostics(out: Path, audio: str, music: str, injected: list[dict[str, object]] | None) -> None:
     se_music = out / f"se_music_{audio}"
     sbl_ids = {(int(item["room_id"]), int(item["sound_id"])) for item in injected or []}
     seagull_injected = (41, 71) in sbl_ids
@@ -138,7 +157,8 @@ def _print_audio_diagnostics(out: Path, audio: str, injected: list[dict[str, obj
         f"  SCUMM Bar chatter source found: {_path_exists(out / '.work/music/ambience-wav/AMB_ScummBar_01.wav')}",
         f"  SCUMM Bar chatter injected: no (mixed into optional SE music track 8)",
         f"  SCUMM Bar chatter reachable via resource index: no (optional external music track)",
-        f"  root music policy: {_root_music_policy(audio)}",
+        f"  root music mode: {music}",
+        f"  root music policy: {_root_music_policy(audio, music)}",
         f"  root track8.{audio}: {_path_exists(out / f'track8.{audio}')}",
         f"  SE track8.{audio}: {_path_exists(se_music / f'track8.{audio}')} (kept in se_music_{audio}/)",
         f"  pre-SBL comparison folder: {pre_sbl if pre_sbl.exists() else 'missing'}",
@@ -186,6 +206,7 @@ def build(options: BuildOptions) -> None:
     runner.log(f"builder: {builder}")
     runner.log(f"out:     {out}")
     runner.log(f"audio:   {options.audio}")
+    runner.log(f"music:   {options.music}")
 
     if options.dry_run:
         runner.log("")
@@ -196,7 +217,7 @@ def build(options: BuildOptions) -> None:
         runner.log("4. Extract Speech.xwb and SFXNew.xwb, decoding WMA entries with ffmpeg.")
         runner.log("5. Process voice.bat samples and build monkey.sog.")
         runner.log("6. Inject SBL sound effects unless --skip-sbl is set.")
-        runner.log("7. Convert music unless --skip-music is set.")
+        runner.log(f"7. Convert music unless --skip-music is set; root mode: {options.music}.")
         runner.clean_dir(out)
         return
 
@@ -265,11 +286,14 @@ def build(options: BuildOptions) -> None:
         if options.verbose:
             music_cmd.append("--verbose")
         runner.run(music_cmd)
-        copied = _copy_default_music_to_root(out, options.audio, options.verbose)
-        runner.log(f"Default root music tracks: {copied} files ({_root_music_policy(options.audio)})")
+        copied = _copy_default_music_to_root(out, options.audio, options.music, options.verbose)
+        runner.log(
+            f"Default root music tracks: {copied} files "
+            f"({_root_music_policy(options.audio, options.music)})"
+        )
 
     shutil.copy2(builder / "readme.txt", out / "readme.txt")
-    _print_audio_diagnostics(out, options.audio, injected)
+    _print_audio_diagnostics(out, options.audio, options.music, injected)
     runner.log("")
     runner.log("Native MI1 experimental Ogg build complete.")
     runner.log("Generated:")

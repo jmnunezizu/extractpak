@@ -23,6 +23,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     mi1_parser = games.add_parser("mi1", help="build The Secret of Monkey Island Ultimate Talkie")
     add_common(mi1_parser)
+    mi1_parser.add_argument(
+        "--music",
+        choices=["cd", "hybrid", "se"],
+        default="hybrid",
+        help="root soundtrack set for MI1; default: hybrid",
+    )
     mi1_parser.add_argument("--skip-sbl", action="store_true")
     mi1_parser.add_argument("--skip-music", action="store_true")
 
@@ -43,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
                     builder=args.builder,
                     out=args.out,
                     audio=args.audio,
+                    music=args.music,
                     dry_run=args.dry_run,
                     verbose=args.verbose,
                     skip_sbl=args.skip_sbl,
