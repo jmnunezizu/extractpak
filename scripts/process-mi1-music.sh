@@ -9,9 +9,9 @@ Usage:
     --work /path/to/.work/music \
     --audio ogg [--dry-run] [--verbose]
 
-This ports tools/cdaudio.bat for the Ogg path. It extracts MusicOriginal.xwb,
-MusicNew.xwb, and Ambience.xwb with the native XWB extractor, then applies the
-same SoX trims/gains/mixes into cd_music_ogg/ and se_music_ogg/.
+This ports tools/cdaudio.bat for the Ogg path. It decodes MusicOriginal.xwb,
+MusicNew.xwb, and Ambience.xwb with vgmstream-cli, then applies the same SoX
+trims/gains/mixes into cd_music_ogg/ and se_music_ogg/.
 EOF
 }
 
@@ -114,15 +114,12 @@ esac
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-EXTRACT_XWB=${EXTRACT_XWB:-"$REPO_ROOT/scripts/extract-xwb.py"}
-
 require_dir "$AUDIO_DIR"
 require_file "$AUDIO_DIR/MusicOriginal.xwb"
 require_file "$AUDIO_DIR/MusicNew.xwb"
 require_file "$AUDIO_DIR/Ambience.xwb"
-require_file "$EXTRACT_XWB"
 require_tool sox "install SoX to reproduce cdaudio.bat transforms"
-require_tool ffmpeg "install ffmpeg to decode XACT WMA music entries"
+require_tool vgmstream-cli "install vgmstream to decode XACT WMA music banks correctly"
 
 if ! sox_can_write ogg; then
     die "this script currently requires SoX with Ogg/Vorbis write support"
@@ -151,18 +148,22 @@ esac
 rm -rf "$WORK"
 mkdir -p "$ORIGINAL" "$NEW" "$AMBIENCE" "$CD_OUT" "$SE_OUT"
 
-if [ "$VERBOSE" -eq 1 ]; then
-    "$EXTRACT_XWB" "$AUDIO_DIR/MusicOriginal.xwb" "$ORIGINAL" --decode-wma --verbose
-else
-    "$EXTRACT_XWB" "$AUDIO_DIR/MusicOriginal.xwb" "$ORIGINAL" --decode-wma
-fi
+decode_bank() {
+    bank=$1
+    dst=$2
+    label=$3
+    verbose "decode $label $bank -> $dst"
+    vgmstream-cli -i -S 0 -o "$dst/?n.wav" "$bank"
+}
+
+decode_bank "$AUDIO_DIR/MusicOriginal.xwb" "$ORIGINAL" "classic CD music"
 
 cd_track() {
     src=$1
     dst=$2
     shift 2
     require_file "$ORIGINAL/$src"
-    verbose "cd music $src -> $dst"
+    verbose "cd music $dst <- MusicOriginal.xwb/$src"
     sox "$ORIGINAL/$src" -V0 "$CD_OUT/$dst" "$@"
 }
 
@@ -189,20 +190,15 @@ cd_track track23.wav track22.ogg
 cd_track track24.wav track23.ogg
 cd_track track25.wav track24.ogg
 
-if [ "$VERBOSE" -eq 1 ]; then
-    "$EXTRACT_XWB" "$AUDIO_DIR/MusicNew.xwb" "$NEW" --decode-wma --verbose
-    "$EXTRACT_XWB" "$AUDIO_DIR/Ambience.xwb" "$AMBIENCE" --decode-wma --verbose
-else
-    "$EXTRACT_XWB" "$AUDIO_DIR/MusicNew.xwb" "$NEW" --decode-wma
-    "$EXTRACT_XWB" "$AUDIO_DIR/Ambience.xwb" "$AMBIENCE" --decode-wma
-fi
+decode_bank "$AUDIO_DIR/MusicNew.xwb" "$NEW" "Special Edition music"
+decode_bank "$AUDIO_DIR/Ambience.xwb" "$AMBIENCE" "Special Edition ambience"
 
 se_track() {
     src=$1
     dst=$2
     shift 2
     require_file "$NEW/$src"
-    verbose "se music $src -> $dst"
+    verbose "se music $dst <- MusicNew.xwb/$src"
     sox "$NEW/$src" -V0 "$SE_OUT/$dst" "$@"
 }
 
@@ -211,7 +207,7 @@ se_ambience() {
     dst=$2
     shift 2
     require_file "$AMBIENCE/$src"
-    verbose "se ambience $src -> $dst"
+    verbose "se ambience $dst <- Ambience.xwb/$src"
     sox "$AMBIENCE/$src" -V0 "$SE_OUT/$dst" "$@"
 }
 

@@ -1,0 +1,59 @@
+from __future__ import annotations
+
+import shutil
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+
+
+class BuildError(RuntimeError):
+    pass
+
+
+@dataclass
+class Runner:
+    dry_run: bool = False
+    verbose: bool = False
+
+    def log(self, message: str = "") -> None:
+        print(message)
+
+    def require_tool(self, name: str, hint: str) -> None:
+        if shutil.which(name) is None:
+            raise BuildError(f"missing required tool '{name}': {hint}")
+
+    def has_tool(self, name: str) -> bool:
+        return shutil.which(name) is not None
+
+    def run(self, args: Iterable[str | Path], **kwargs) -> subprocess.CompletedProcess:
+        command = [str(arg) for arg in args]
+        if self.dry_run:
+            self.log("[dry-run] " + " ".join(command))
+            return subprocess.CompletedProcess(command, 0)
+        if self.verbose:
+            self.log("+ " + " ".join(command))
+        try:
+            return subprocess.run(command, check=True, **kwargs)
+        except subprocess.CalledProcessError as error:
+            raise BuildError(f"command failed ({error.returncode}): {' '.join(command)}") from error
+
+    def clean_dir(self, path: Path) -> None:
+        if str(path) in ("", "/", "."):
+            raise BuildError(f"refusing to use unsafe output directory: {path}")
+        if self.dry_run:
+            self.log(f"[dry-run] rm -rf {path}")
+            self.log(f"[dry-run] mkdir -p {path}")
+            return
+        shutil.rmtree(path, ignore_errors=True)
+        path.mkdir(parents=True, exist_ok=True)
+
+
+def require_file(path: Path) -> None:
+    if not path.is_file():
+        raise BuildError(f"missing file: {path}")
+
+
+def require_dir(path: Path) -> None:
+    if not path.is_dir():
+        raise BuildError(f"missing directory: {path}")
