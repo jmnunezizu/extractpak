@@ -195,10 +195,21 @@ Build `extractpak` first:
 clang extractpak.c -o extractpak
 ```
 
+Preferred Python CLI:
+
+```bash
+python3 -m talkiebuilder build mi2 \
+  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --verbose
+```
+
 Preview the native build steps without writing output:
 
 ```bash
-scripts/build-mi2-talkie.sh \
+python3 -m talkiebuilder build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
@@ -207,7 +218,7 @@ scripts/build-mi2-talkie.sh \
   --verbose
 ```
 
-Run the experimental native Ogg build:
+The older shell entry point is still kept for compatibility:
 
 ```bash
 scripts/build-mi2-talkie.sh \
@@ -279,7 +290,18 @@ Prerequisites:
 - the Monkey Island Special Edition install, including `Monkey1.pak` and the `audio/` XWB files
 - the extracted `MI1_Ultimate_Talkie_Edition_Builder` folder
 
-Run the experimental native Ogg build:
+Preferred Python CLI:
+
+```bash
+python3 -m talkiebuilder build mi1 \
+  --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
+  --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --verbose
+```
+
+The older shell entry point is still kept for compatibility:
 
 ```bash
 scripts/build-mi1-talkie.sh \
