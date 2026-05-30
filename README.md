@@ -1,297 +1,57 @@
-# extractpak
+# TalkieBuilder
 
-`extractpak` extracts files from the `.pak` archives used by the Monkey Island
-Special Edition releases.
+TalkieBuilder is a native cross-platform replacement for the Windows-only
+Ultimate Talkie Edition build toolchains for the Monkey Island Special Edition
+games.
 
-Tested with:
+It builds ScummVM-compatible Talkie Editions from assets that you already own.
+No game data is shipped in this repository. The project automates the same kind
+of extraction, patching, audio processing, and resource packing that the
+original Windows builders performed, but does it with native command line tools
+and a Python CLI.
 
-- [The Secret of Monkey Island(TM): Special Edition](https://www.gog.com/en/game/the_secret_of_monkey_island_special_edition)
-- [Monkey Island(TM) 2 Special Edition: LeChuck's Revenge(TM)](https://www.gog.com/en/game/monkey_island_2_special_edition_lechucks_revenge)
+Supported games:
 
-## Build
+- The Secret of Monkey Island: Special Edition
+- Monkey Island 2 Special Edition: LeChuck's Revenge
 
-On macOS or Linux with Clang installed:
+The original `extractpak` utility is still included for inspecting and
+extracting Special Edition `.pak` archives directly.
 
-```bash
-clang extractpak.c -o extractpak
-```
+## Features
 
-## Extract the GOG Installers First
+- Native PAK extraction for `Monkey1.pak` and `monkey2.pak`
+- Native XACT wave bank (`.xwb`) inspection and extraction
+- Native ScummVM speech archive generation
+- Native replacements for `build_monster.exe`, MI1 `wav2sbl.exe`, and the MI1
+  `scummpacker.exe` SBL injection flow
+- Native MI1 music conversion using `vgmstream-cli` and SoX
+- Native MI1 SBL sound-effect injection
+- Python CLI: `python3 -m talkiebuilder`
+- MI1 resource inspection commands
+- Automated pytest coverage for CLI parsing, monster archive packing, XWB
+  parsing, and SBL generation
+- Compatibility shell scripts retained under `scripts/`
 
-If you downloaded the Windows installers from GOG, extract the installer contents
-with `innoextract` before running `extractpak`.
+## Legal Notes
 
-Install `innoextract` on macOS with Homebrew:
+This project does not include, distribute, or generate copyrighted game assets
+by itself.
 
-```bash
-brew install innoextract
-```
+You must provide:
 
-Extract The Secret of Monkey Island: Special Edition installer:
+- Your own legally owned copies of the Monkey Island Special Edition games.
+- The `.pak` and `audio/` files extracted from those games.
+- The original Ultimate Talkie Edition builder files for the game you want to
+  build.
 
-```bash
-innoextract -d MonkeyIsland setup_the_secret_of_monkey_islandtm_special_edition_1.0_\(18587\).exe
-```
+TalkieBuilder only automates the local build process. The generated output
+folder contains LucasArts/Disney game assets derived from your installation and
+must not be redistributed.
 
-Extract Monkey Island 2 Special Edition: LeChuck's Revenge installer:
+## Quick Start
 
-```bash
-innoextract -d MonkeyIsland2 setup_monkey_island2_se_2.0.0.10.exe
-```
-
-After extraction, the `.pak` files are typically available at:
-
-```text
-MonkeyIsland/Monkey1.pak
-MonkeyIsland2/app/monkey2.pak
-```
-
-## Usage
-
-List archive entries without extracting:
-
-```bash
-./extractpak --list <pak file>
-```
-
-Extract the full archive into the current directory:
-
-```bash
-./extractpak <pak file>
-```
-
-Extract the full archive into a specific output directory:
-
-```bash
-./extractpak <pak file> <output_dir>
-```
-
-Extract only matching entries:
-
-```bash
-./extractpak --only <text> <pak file> [output_dir]
-```
-
-Show parser diagnostics for classic game data entries:
-
-```bash
-./extractpak --debug-classic <pak file>
-```
-
-## The Secret of Monkey Island: Special Edition
-
-Example GOG archive path:
-
-```bash
-~/Downloads/MonkeyIsland/Monkey1.pak
-```
-
-List files:
-
-```bash
-./extractpak --list ~/Downloads/MonkeyIsland/Monkey1.pak
-```
-
-Extract everything:
-
-```bash
-./extractpak ~/Downloads/MonkeyIsland/Monkey1.pak monkey1-extracted
-```
-
-Extract only the classic SCUMM data files:
-
-```bash
-./extractpak --only classic/en ~/Downloads/MonkeyIsland/Monkey1.pak monkey1-classic
-```
-
-This should extract:
-
-```text
-classic/en/monkey1.000
-classic/en/monkey1.001
-```
-
-## Monkey Island 2 Special Edition: LeChuck's Revenge
-
-Example GOG archive path:
-
-```bash
-~/Downloads/MonkeyIsland2/app/monkey2.pak
-```
-
-List files:
-
-```bash
-./extractpak --list ~/Downloads/MonkeyIsland2/app/monkey2.pak
-```
-
-Extract everything:
-
-```bash
-./extractpak ~/Downloads/MonkeyIsland2/app/monkey2.pak monkey2-extracted
-```
-
-Extract only the classic SCUMM data files:
-
-```bash
-./extractpak --only classic/en ~/Downloads/MonkeyIsland2/app/monkey2.pak monkey2-classic
-```
-
-This should extract:
-
-```text
-classic/en/monkey2.000
-classic/en/monkey2.001
-```
-
-## Building Monkey Island 2 Ultimate Talkie Edition on macOS/Linux
-
-This repo includes an experimental native helper for inspecting and reproducing
-the Windows Monkey Island 2 Ultimate Talkie Edition builder without
-Wine or `.bat` execution.
-
-The helper is intentionally conservative. It currently performs the native
-steps that are understood and testable:
-
-- validates the Special Edition and builder inputs
-- extracts `classic/en/monkey2.000` and `classic/en/monkey2.001` from
-  `monkey2.pak` with `extractpak`
-- patches those SCUMM resource files with native `bspatch`
-- extracts WAV files from `Speech.xwb` and `Patch.xwb`
-- processes the `voice.bat` SoX trim/mix steps and converts samples for the
-  selected audio mode
-- builds an experimental ScummVM compressed speech archive for Ogg, FLAC, or MP3
-- copies the builder README into the output folder
-
-Analysis of the Windows builder is documented in
-[docs/mi2-ultimate-talkie-builder-analysis.md](docs/mi2-ultimate-talkie-builder-analysis.md).
-
-Prerequisites:
-
-- `clang`, to build `extractpak`
-- `bspatch`; macOS includes `/usr/bin/bspatch`
-- `python3`, for the native XWB extractor
-- `sox`, for `voice.bat` trim/mix and sample conversion
-- the Monkey Island 2 Special Edition install, including:
-  - `monkey2.pak`
-  - `audio/Speech.xwb`
-  - `audio/Patch.xwb`
-- the extracted `MI2_Ultimate_Talkie_Edition_Builder` folder
-
-Audio mode tools:
-
-- `raw`: `sox`; archive packing is still TODO
-- `ogg`: `sox` with Ogg support, `oggenc`, or `ffmpeg`
-- `flac`: `flac` or `ffmpeg`
-- `mp3`: `lame` or `ffmpeg`
-
-Ogg is the first validated target. FLAC and MP3 use the same compressed ScummVM
-container layout, but have not been tested as thoroughly. Raw `monster.sou`
-generation is still TODO.
-
-Build `extractpak` first:
-
-```bash
-clang extractpak.c -o extractpak
-```
-
-Preferred Python CLI:
-
-```bash
-python3 -m talkiebuilder build mi2 \
-  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
-  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
-  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg \
-  --verbose
-```
-
-Preview the native build steps without writing output:
-
-```bash
-python3 -m talkiebuilder build mi2 \
-  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
-  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
-  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg \
-  --dry-run \
-  --verbose
-```
-
-The older shell entry point is still kept for compatibility:
-
-```bash
-scripts/build-mi2-talkie.sh \
-  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
-  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
-  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg \
-  --verbose
-```
-
-Expected current output:
-
-```text
-monkey2.000
-monkey2.001
-readme.txt
-.work/speech-wav/*.wav
-.work/patch-wav/*.wav
-.work/processed-voice/final-ogg/*.ogg
-monkey2.sog
-```
-
-The complete talkie build needs one generated speech resource:
-
-```text
-monkey2.sof  # FLAC
-monkey2.sog  # Ogg Vorbis, experimental native support
-monkey2.so3  # MP3
-monster.sou  # raw DOS speech
-```
-
-The native helper currently generates the compressed ScummVM archive directly
-from `monster.tbl` and the processed samples. It packs only samples referenced by
-`monster.tbl` and warns about extra generated sample files.
-
-ScummVM instructions:
-
-Add the output folder in ScummVM as the game directory.
-
-Legal note: you must own Monkey Island 2 Special Edition and provide your own
-game files. This repository does not distribute LucasArts game assets or built
-Ultimate Talkie output files.
-
-## Building Monkey Island 1 Ultimate Talkie Edition on macOS/Linux
-
-This repo also includes a full experimental native Ogg helper for The Secret of
-Monkey Island Ultimate Talkie Edition.
-
-Current status:
-
-- extracts and patches `classic/en/monkey1.000` / `monkey1.001` into `monkey.000` / `monkey.001`
-- extracts `Speech.xwb` and `SFXNew.xwb`, including WMA entries through `ffmpeg`
-- processes the MI1 `voice.bat` sample edits
-- builds `monkey.sog`
-- converts classic CD music and Special Edition music/ambience to Ogg
-- injects the `sbl.bat` high quality sound effects natively
-- preserves a pre-SBL backup under `.work/sbl/pre-sbl`
-
-Analysis is documented in
-[docs/mi1-ultimate-talkie-builder-analysis.md](docs/mi1-ultimate-talkie-builder-analysis.md).
-
-Prerequisites:
-
-- `clang`, to build `extractpak`
-- `bspatch`; macOS includes `/usr/bin/bspatch`
-- `python3`
-- `sox` with Ogg/Vorbis write support
-- `ffmpeg`, for WMA/XWMA SFX decoding
-- `vgmstream-cli`, for MI1 XACT music-bank decoding
-- the Monkey Island Special Edition install, including `Monkey1.pak` and the `audio/` XWB files
-- the extracted `MI1_Ultimate_Talkie_Edition_Builder` folder
-
-Preferred Python CLI:
+Build Monkey Island 1:
 
 ```bash
 python3 -m talkiebuilder build mi1 \
@@ -303,16 +63,152 @@ python3 -m talkiebuilder build mi1 \
   --verbose
 ```
 
-The older shell entry point is still kept for compatibility:
+Build Monkey Island 2:
 
 ```bash
-scripts/build-mi1-talkie.sh \
+python3 -m talkiebuilder build mi2 \
+  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --verbose
+```
+
+Add the generated output folder to ScummVM, not the original Special Edition
+installation folder.
+
+## Setup
+
+1. Clone the repository:
+
+   ```bash
+   git clone <repository-url>
+   cd extractpak
+   ```
+
+2. Install required tools:
+
+   macOS with Homebrew:
+
+   ```bash
+   brew install python sox ffmpeg vgmstream
+   ```
+
+   Debian/Ubuntu:
+
+   ```bash
+   sudo apt install python3 python3-pytest sox ffmpeg bsdiff clang
+   ```
+
+   Install `vgmstream-cli` from your package manager, upstream releases, or
+   source if your distribution does not provide it.
+
+   Windows users can run TalkieBuilder from WSL, MSYS2, or another environment
+   that provides Python, `bspatch`, `sox`, `ffmpeg`, and `vgmstream-cli` on
+   `PATH`.
+
+3. Compile the PAK extractor:
+
+   ```bash
+   clang extractpak.c -o extractpak
+   ```
+
+4. Verify the Python package:
+
+   ```bash
+   python3 -m py_compile talkiebuilder/*.py
+   python3 -m pytest
+   ```
+
+### Tool Requirements
+
+- Python 3.9 or newer: runs the `talkiebuilder` package and tests.
+- `bspatch`: applies the Ultimate Talkie binary patch files.
+- `ffmpeg`: decodes WMA/XWMA sound-effect entries where needed.
+- `sox`: performs the trim, mix, gain, pad, and audio conversion operations
+  ported from the builder batch files.
+- `vgmstream-cli`: decodes MI1 XACT music banks correctly.
+- `clang`: optional but recommended; used to compile `extractpak.c`.
+
+Audio encoder support:
+
+- Ogg Vorbis: SoX with Ogg support, `oggenc`, or `ffmpeg`.
+- FLAC: `flac` or `ffmpeg`.
+- MP3: `lame` or `ffmpeg`.
+
+## Extracting GOG Installers
+
+If you downloaded the Windows installers from GOG, extract them first with
+`innoextract`.
+
+```bash
+brew install innoextract
+```
+
+Extract The Secret of Monkey Island: Special Edition:
+
+```bash
+innoextract -d MonkeyIsland setup_the_secret_of_monkey_islandtm_special_edition_1.0_\(18587\).exe
+```
+
+Extract Monkey Island 2 Special Edition:
+
+```bash
+innoextract -d MonkeyIsland2 setup_monkey_island2_se_2.0.0.10.exe
+```
+
+Typical resulting paths:
+
+```text
+MonkeyIsland/Monkey1.pak
+MonkeyIsland/audio/
+MonkeyIsland2/app/monkey2.pak
+MonkeyIsland2/app/audio/
+```
+
+## Supported Games
+
+| Game | Status | Notes |
+| --- | --- | --- |
+| The Secret of Monkey Island | Complete | Speech, music, SBL, ambience, and root soundtrack selection. Ogg is the validated native output mode. |
+| Monkey Island 2: LeChuck's Revenge | Complete | Speech and music/resource support through the patched ScummVM game output. Ogg is the primary validated speech archive output; FLAC/MP3 use the same compressed archive path when encoders are available. |
+
+## Building Monkey Island 1
+
+```bash
+python3 -m talkiebuilder build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
+  --music hybrid \
   --verbose
 ```
+
+Required inputs:
+
+- `Monkey1.pak`
+- `audio/Speech.xwb`
+- `audio/SFXNew.xwb`
+- `audio/MusicOriginal.xwb`
+- `audio/MusicNew.xwb`
+- `audio/Ambience.xwb`
+- `MI1_Ultimate_Talkie_Edition_Builder/tools/patch10.000`
+- `MI1_Ultimate_Talkie_Edition_Builder/tools/patch10.001`
+- `MI1_Ultimate_Talkie_Edition_Builder/tools/monster.tbl`
+
+Options:
+
+- `--pak PATH`: path to `Monkey1.pak`.
+- `--builder PATH`: path to the extracted MI1 Ultimate Talkie builder folder.
+- `--out PATH`: output folder to create.
+- `--audio ogg|flac|mp3`: target compressed speech format. MI1 is validated
+  for `ogg`.
+- `--music cd|hybrid|se`: root soundtrack selection. Default: `hybrid`.
+- `--skip-sbl`: skip native SBL sound-effect injection.
+- `--skip-music`: skip music conversion and root soundtrack copying.
+- `--dry-run`: print planned steps without writing final output.
+- `--verbose`: print detailed processing and root soundtrack mapping output.
 
 Expected output:
 
@@ -320,31 +216,91 @@ Expected output:
 monkey.000
 monkey.001
 monkey.sog
-track*.ogg
 readme.txt
+track*.ogg
 cd_music_ogg/*.ogg
 se_music_ogg/*.ogg
+music-root-map.txt
+.work/
 ```
 
-Optional flags:
+### MI1 Music Modes
 
-- `--skip-sbl`: skip native SBL sound-effect injection.
-- `--skip-music`: skip CD/SE music conversion.
-- `--music cd|hybrid|se`: choose the root `track*.ogg` soundtrack set. The
-  default is `hybrid`.
+`--music cd`
 
-The Ogg path now runs without Wine: patched resources, speech archive, native
-SBL injection, and music are generated locally. The SBL injector verifies the
-rebuilt SCUMM resource structure and reports SHA256 values for the pre/post
-resource files. For a directly usable ScummVM folder, `--music hybrid` writes
-classic CD music tracks to the root and overlays the Special Edition extended
-ambience tracks `25`-`29`, matching the Windows builder's optional root-track
-workflow. `--music cd` writes only `cd_music_ogg/track*.ogg` to the root, while
-`--music se` writes `se_music_ogg/track*.ogg` to the root. The `cd_music_ogg/`
-and `se_music_ogg/` folders are always kept for comparison or manual music
-selection through ScummVM extra paths.
+- Root `track*.ogg` files come only from `cd_music_ogg/`.
+- This is the classic CD soundtrack path.
 
-Resource inspection helpers:
+`--music hybrid` default
+
+- Root `track*.ogg` files start from `cd_music_ogg/`.
+- `se_music_ogg/track25.ogg` through `track29.ogg` are copied over the root
+  output.
+- This preserves the current default behavior and mirrors the original
+  builder's optional extended-environment root-track workflow.
+
+`--music se`
+
+- Root `track*.ogg` files come from `se_music_ogg/`.
+- This uses the full Special Edition soundtrack.
+- This includes the SCUMM Bar chatter ambience, because the chatter is mixed
+  into the SE `track8.ogg`.
+
+The original Windows builder generated both `cd_music_ogg/track8.ogg` and
+`se_music_ogg/track8.ogg`. Only the SE version contains the SCUMM Bar chatter
+mix. The optional `extended_SE_tracks_to_game_folder.bat` moved only SE tracks
+`25` through `29` into the root folder; it did not move SE `track8`.
+
+For that reason, `hybrid` keeps CD `track8.ogg`. Use `--music se` if you want
+the SCUMM Bar chatter ambience in root playback.
+
+## Building Monkey Island 2
+
+```bash
+python3 -m talkiebuilder build mi2 \
+  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --verbose
+```
+
+Required inputs:
+
+- `monkey2.pak`
+- `audio/Speech.xwb`
+- `audio/Patch.xwb`
+- `MI2_Ultimate_Talkie_Edition_Builder/tools/patch02.000`
+- `MI2_Ultimate_Talkie_Edition_Builder/tools/patch02.001`
+- `MI2_Ultimate_Talkie_Edition_Builder/tools/monster.tbl`
+
+Options:
+
+- `--pak PATH`: path to `monkey2.pak`.
+- `--builder PATH`: path to the extracted MI2 Ultimate Talkie builder folder.
+- `--out PATH`: output folder to create.
+- `--audio ogg|flac|mp3`: target compressed speech format. Ogg is the primary
+  validated target.
+- `--dry-run`: print planned steps without writing final output.
+- `--verbose`: print detailed processing output.
+
+Expected output:
+
+```text
+monkey2.000
+monkey2.001
+monkey2.sog
+readme.txt
+.work/
+```
+
+For FLAC or MP3, the speech archive is named `monkey2.sof` or `monkey2.so3`.
+
+## Inspecting Resources
+
+TalkieBuilder can inspect generated MI1 SCUMM resources. This is useful when
+debugging SBL injection or checking whether a sound resource is visible through
+the resource index.
 
 ```bash
 python3 -m talkiebuilder inspect mi1 resources --game-dir /tmp/mi1-test
@@ -352,68 +308,259 @@ python3 -m talkiebuilder inspect mi1 room --game-dir /tmp/mi1-test --room 41
 python3 -m talkiebuilder inspect mi1 resource --game-dir /tmp/mi1-test --room 41 --id 71
 ```
 
-ScummVM instructions:
+Dump one resource:
 
-Add the output folder in ScummVM as the game directory.
+```bash
+python3 -m talkiebuilder inspect mi1 resource \
+  --game-dir /tmp/mi1-test \
+  --room 41 \
+  --id 71 \
+  --dump /tmp/sound-071.bin
+```
 
-Legal note: you must own The Secret of Monkey Island Special Edition and provide
-your own game files. This repository does not distribute LucasArts game assets
-or built Ultimate Talkie output files.
+Compare against a pre-SBL output:
 
-## Notes
+```bash
+python3 -m talkiebuilder inspect mi1 resource \
+  --game-dir /tmp/mi1-test \
+  --compare /tmp/mi1-test/.work/sbl/pre-sbl \
+  --room 41 \
+  --id 71
+```
+
+## Using extractpak Directly
+
+Build the C extractor:
+
+```bash
+clang extractpak.c -o extractpak
+```
+
+Common commands:
+
+```bash
+./extractpak --list ~/Downloads/MonkeyIsland/Monkey1.pak
+./extractpak --list ~/Downloads/MonkeyIsland2/app/monkey2.pak
+
+./extractpak ~/Downloads/MonkeyIsland/Monkey1.pak monkey1-extracted
+./extractpak ~/Downloads/MonkeyIsland2/app/monkey2.pak monkey2-extracted
+
+./extractpak --only classic/en ~/Downloads/MonkeyIsland/Monkey1.pak monkey1-classic
+./extractpak --only classic/en ~/Downloads/MonkeyIsland2/app/monkey2.pak monkey2-classic
+
+./extractpak --debug-classic ~/Downloads/MonkeyIsland/Monkey1.pak
+./extractpak --debug-classic ~/Downloads/MonkeyIsland2/app/monkey2.pak
+```
+
+Expected classic outputs:
+
+```text
+classic/en/monkey1.000
+classic/en/monkey1.001
+classic/en/monkey2.000
+classic/en/monkey2.001
+```
+
+Extraction notes:
 
 - Full extraction also writes `.dds` files for `.dxt` assets.
-- DDS generation is disabled when extracting `--only classic/en`, because the
-  classic `.000` and `.001` files are not DXT texture assets.
+- DDS generation is disabled when extracting `--only classic/en`.
 - Archive entries that start with `/` are written as relative paths.
 - Empty archive entry names are skipped.
 - If an output file cannot be written, extraction continues and reports the
   failure count at the end.
 
-At the end of extraction, the tool prints:
+## Reference: How It Works
+
+TalkieBuilder replaces a chain of Windows batch files and Windows executables
+with native code and common command line tools.
+
+MI1 pipeline:
 
 ```text
-Extracted X files
-Skipped Y entries
-Failed Z files
+Special Edition assets
+-> extractpak
+-> XWB extraction
+-> speech processing
+-> monster archive generation
+-> SBL generation
+-> SBL injection
+-> music conversion
+-> final ScummVM game
 ```
 
-## Parser Limitations
+MI2 pipeline:
 
-The parser is intentionally small and assumes the archive format used by these
-two Special Edition releases:
+```text
+Special Edition assets
+-> extractpak
+-> XWB extraction
+-> speech processing
+-> monster archive generation
+-> final ScummVM game
+```
 
-- It assumes little-endian archive fields.
-- It assumes file entries are stored uncompressed when `flags/type` is `0`.
-- It does not validate every archive offset and size against the physical file
-  length before reading.
-- It strips leading `/` characters, but it does not otherwise sandbox paths such
-  as entries containing `..`.
+For MI1, the native builder extracts the classic SCUMM resource files from
+`Monkey1.pak`, applies Ultimate Talkie patches with `bspatch`, processes speech
+from `Speech.xwb`, packs `monkey.sog`, injects SBL sound-effect resources, and
+generates the selected soundtrack set.
 
-## Origin and Attribution
+For MI2, it extracts the classic SCUMM resource files from `monkey2.pak`,
+applies the Ultimate Talkie patches, processes `Speech.xwb` and `Patch.xwb`,
+and packs the ScummVM speech archive.
 
-This utility is modified from the original `extractpak.c` in
-[timfel/monkey](https://github.com/timfel/monkey), a small GitHub repository for
+## Reference: Files and Formats
+
+- `monkey.sog`: MI1 ScummVM compressed speech archive for Ogg Vorbis speech.
+- `monkey2.sog`: MI2 ScummVM compressed speech archive for Ogg Vorbis speech.
+- `monkey.sof` / `monkey2.sof`: FLAC variants of the compressed speech archive.
+- `monkey.so3` / `monkey2.so3`: MP3 variants of the compressed speech archive.
+- `monster.sou`: raw/WAV speech archive name used by classic SCUMM talkie
+  games; native raw generation is not currently implemented.
+- `monster.tbl`: table from the Ultimate Talkie builders mapping original
+  script offsets to speech sample names. TalkieBuilder uses it to decide which
+  processed samples belong in the ScummVM archive.
+- `SBL resources`: MI1 sound resources used for high-quality sound effects.
+  The original builder generated them with `wav2sbl.exe` and injected them with
+  `scummpacker.exe`; TalkieBuilder implements that path natively.
+- `patch10.000` / `patch10.001`: MI1 binary patches for classic SCUMM resource
+  files.
+- `patch02.000` / `patch02.001`: MI2 binary patches for classic SCUMM resource
+  files.
+- `Speech.xwb`: XACT wave bank containing spoken dialogue.
+- `Patch.xwb`: MI2 XACT wave bank containing replacement or patch speech.
+- `SFXNew.xwb`: MI1 Special Edition sound-effect bank used by the SBL path.
+- `MusicOriginal.xwb`: MI1 classic CD soundtrack bank.
+- `MusicNew.xwb`: MI1 Special Edition soundtrack bank.
+- `Ambience.xwb`: MI1 Special Edition ambience bank. This includes the SCUMM
+  Bar chatter ambience mixed into the SE soundtrack path.
+
+## Testing
+
+Run:
+
+```bash
+python3 -m pytest
+```
+
+The tests cover CLI parsing, dry-run behavior, `monster.tbl` parsing, ScummVM
+monster archive build and verification with tiny fake samples, XWB parser
+behavior, and SBL conversion with generated WAV data.
+
+For syntax-only validation:
+
+```bash
+python3 -m py_compile talkiebuilder/*.py
+```
+
+## Project History
+
+This repository started as a modernization of `extractpak.c`, an old utility
+for extracting Monkey Island Special Edition `.pak` archives. It grew into a
+native Python toolchain for building local Ultimate Talkie Edition folders
+without Wine, Windows batch files, or opaque Windows-only executables.
+
+## Known Limitations
+
+- MI1 is currently validated for Ogg output. FLAC/MP3 may be added to the MI1
+  orchestration once the same end-to-end testing is done.
+- MI2 Ogg is the primary validated output. FLAC and MP3 use the same archive
+  format support but are less heavily tested.
+- Raw `monster.sou` generation is not implemented.
+- The PAK parser is intentionally small and targets the two Monkey Island
+  Special Edition archive layouts.
+- `extractpak` assumes little-endian archive fields and does not fully sandbox
+  archive paths beyond stripping leading `/` characters.
+- Windows use is expected to work best through WSL or a Unix-like environment
+  with the required tools on `PATH`.
+- The shell scripts remain for compatibility, but new orchestration should use
+  `python3 -m talkiebuilder`.
+
+## Troubleshooting
+
+### Missing External Tools
+
+If the CLI reports a missing tool, install it and ensure it is on `PATH`.
+
+Common examples:
+
+- `bspatch`: needed for patch files.
+- `ffmpeg`: needed for WMA/XWMA SFX decoding.
+- `sox`: needed for audio trimming and mixing.
+- `vgmstream-cli`: needed for MI1 music bank decoding.
+
+### Speech Is Missing
+
+Check that:
+
+- The correct Ultimate Talkie builder folder was passed with `--builder`.
+- `monster.tbl` exists under the builder `tools/` directory.
+- `Speech.xwb` exists under the Special Edition `audio/` directory.
+- The output contains `monkey.sog` or `monkey2.sog`.
+- ScummVM is pointed at the generated output folder, not the original Special
+  Edition folder.
+
+### Music Sounds Wrong
+
+For MI1:
+
+- Make sure `vgmstream-cli` is installed.
+- Rebuild with `--verbose`.
+- Inspect `music-root-map.txt` in the output folder.
+- Try `--music cd`, `--music hybrid`, and `--music se`.
+- `--music se` is the mode that includes the SCUMM Bar chatter mix.
+
+For MI2, the native build focuses on the speech archive and patched ScummVM
+resource files. Check the original builder documentation for music
+expectations.
+
+### ScummVM Does Not Detect the Game
+
+Check that the output folder contains the expected classic resource files:
+
+- MI1: `monkey.000`, `monkey.001`, and `monkey.sog`.
+- MI2: `monkey2.000`, `monkey2.001`, and `monkey2.sog`.
+
+If you used a non-Ogg mode, check for the matching archive extension:
+
+- FLAC: `.sof`
+- MP3: `.so3`
+
+### Unsupported Builder Files
+
+The native builders expect the known Ultimate Talkie builder layouts and patch
+file names. If a future builder release changes file names, patch versions, or
+batch logic, TalkieBuilder may need updates. The analysis notes in `docs/`
+record the behavior currently implemented.
+
+## Credits
+
+- ScummVM, for preserving and documenting the runtime behavior these builds
+  target.
+- The Ultimate Talkie Edition authors, for the original builder logic and
+  patches.
+- vgmstream, for reliable game-audio bank decoding.
+- FFmpeg, for broad audio decoding support.
+- SoX, for precise audio processing.
+- The original `extractpak.c` work in
+  [timfel/monkey](https://github.com/timfel/monkey), which this repository
+  builds on.
+
+## Origin, Notice, and License
+
+The `extractpak.c` utility is modified from the original `extractpak.c` in
+[timfel/monkey](https://github.com/timfel/monkey), a small repository for
 working with Monkey Island Special Edition `.pak` files.
 
-The upstream repository README describes:
-
-- `extractpak`, for extracting files from `Monkey1.pak`
-- `packpak`, for replacing files in `Monkey1.pak`
-- DDS output for extracted `.dxt` texture assets
-
-This version keeps the DDS generation behavior but adds support for arbitrary
-pak filenames, Monkey Island 2 Special Edition, output directories, list/debug
-modes, classic-only extraction, safer path handling, and more robust filename
-table parsing.
+This version keeps DDS generation behavior but adds arbitrary PAK filenames,
+Monkey Island 2 support, output directories, list/debug modes, classic-only
+extraction, safer path handling, and more robust filename table parsing.
 
 License note: at the time this README was updated, the upstream
 `timfel/monkey` repository did not show a `LICENSE` file in its root listing.
 Because of that, the original upstream code should be treated as having no
 explicit open-source license unless the upstream author publishes one. See
 [NOTICE](NOTICE) for attribution and licensing notes.
-
-## License
 
 This repository includes an MIT License for the local modifications and
 documentation. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
