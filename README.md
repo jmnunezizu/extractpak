@@ -251,6 +251,74 @@ Legal note: you must own Monkey Island 2 Special Edition and provide your own
 game files. This repository does not distribute LucasArts game assets or built
 Ultimate Talkie output files.
 
+## Building Monkey Island 1 Ultimate Talkie Edition on macOS/Linux
+
+This repo also includes a full experimental native Ogg helper for The Secret of
+Monkey Island Ultimate Talkie Edition.
+
+Current status:
+
+- extracts and patches `classic/en/monkey1.000` / `monkey1.001` into `monkey.000` / `monkey.001`
+- extracts `Speech.xwb` and `SFXNew.xwb`, including WMA entries through `ffmpeg`
+- processes the MI1 `voice.bat` sample edits
+- builds `monkey.sog`
+- converts classic CD music and Special Edition music/ambience to Ogg
+- injects the `sbl.bat` high quality sound effects natively
+- preserves a pre-SBL backup under `.work/sbl/pre-sbl`
+
+Analysis is documented in
+[docs/mi1-ultimate-talkie-builder-analysis.md](docs/mi1-ultimate-talkie-builder-analysis.md).
+
+Prerequisites:
+
+- `clang`, to build `extractpak`
+- `bspatch`; macOS includes `/usr/bin/bspatch`
+- `python3`
+- `sox` with Ogg/Vorbis write support
+- `ffmpeg`, for XACT WMA/XWMA decoding
+- the Monkey Island Special Edition install, including `Monkey1.pak` and the `audio/` XWB files
+- the extracted `MI1_Ultimate_Talkie_Edition_Builder` folder
+
+Run the experimental native Ogg build:
+
+```bash
+scripts/build-mi1-talkie.sh \
+  --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
+  --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --verbose
+```
+
+Expected output:
+
+```text
+monkey.000
+monkey.001
+monkey.sog
+readme.txt
+cd_music_ogg/*.ogg
+se_music_ogg/*.ogg
+```
+
+Optional flags:
+
+- `--skip-sbl`: skip native SBL sound-effect injection.
+- `--skip-music`: skip CD/SE music conversion.
+
+The Ogg path now runs without Wine: patched resources, speech archive, native
+SBL injection, and music are generated locally. The SBL injector verifies the
+rebuilt SCUMM resource structure and reports SHA256 values for the pre/post
+resource files.
+
+ScummVM instructions:
+
+Add the output folder in ScummVM as the game directory.
+
+Legal note: you must own The Secret of Monkey Island Special Edition and provide
+your own game files. This repository does not distribute LucasArts game assets
+or built Ultimate Talkie output files.
+
 ## Notes
 
 - Full extraction also writes `.dds` files for `.dxt` assets.

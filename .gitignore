@@ -1,4 +1,5 @@
 extractpak
+monkey1-classic/
 *.o
 *.dSYM/
 .DS_Store
