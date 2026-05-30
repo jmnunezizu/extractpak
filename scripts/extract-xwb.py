@@ -5,7 +5,9 @@ import argparse
 import os
 import re
 import struct
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -17,6 +19,15 @@ FORMAT_PCM = 0
 FORMAT_XMA = 1
 FORMAT_ADPCM = 2
 FORMAT_WMA = 3
+WMA_BLOCK_ALIGN = {
+    0: 929,
+    1: 1487,
+    2: 1280,
+    3: 2230,
+    4: 8917,
+    5: 8192,
+    6: 558,
+}
 
 class XwbError(Exception):
     pass
@@ -73,6 +84,26 @@ def riff_chunk(chunk_id, payload):
         raise ValueError("chunk id must be 4 bytes")
     padding = b"\0" if len(payload) % 2 else b""
     return chunk_id + struct.pack("<I", len(payload)) + payload + padding
+
+
+def xwma_bytes(entry, payload):
+    fmt = entry["format"]
+    encoded_block_align = WMA_BLOCK_ALIGN.get(fmt["block_align"])
+    if encoded_block_align is None:
+        raise XwbError(f"unsupported WMA block align index: {fmt['block_align']}")
+    avg_bytes = fmt["sample_rate"] * encoded_block_align // 2048
+    fmt_payload = struct.pack(
+        "<HHIIHHH",
+        0x0161,
+        fmt["channels"],
+        fmt["sample_rate"],
+        avg_bytes,
+        encoded_block_align,
+        16,
+        0,
+    )
+    body = b"WAVE" + riff_chunk(b"fmt ", fmt_payload) + riff_chunk(b"data", payload)
+    return b"RIFF" + struct.pack("<I", len(body)) + body
 
 
 def wav_header(entry, payload_size):
@@ -257,7 +288,33 @@ def list_entries(bank):
         )
 
 
-def extract_entries(path, out_dir, bank, verbose=False):
+def decode_wma_payload(entry, payload, destination):
+    with tempfile.TemporaryDirectory(prefix="extract-xwb-") as tmp:
+        tmp_path = Path(tmp) / "entry.xwma"
+        tmp_path.write_bytes(xwma_bytes(entry, payload))
+        command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(tmp_path),
+            str(destination),
+        ]
+        result = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            message = result.stderr.strip() or "ffmpeg failed without diagnostics"
+            raise XwbError(message)
+
+
+def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
     wave_segment = bank["segments"][4]
     if wave_segment["length"] == 0:
         raise XwbError("wave data segment is empty")
@@ -269,7 +326,15 @@ def extract_entries(path, out_dir, bank, verbose=False):
     with path.open("rb") as source:
         for entry in bank["entries"]:
             fmt = entry["format"]
-            if fmt["tag"] not in (FORMAT_PCM, FORMAT_ADPCM):
+            if fmt["tag"] not in (FORMAT_PCM, FORMAT_ADPCM, FORMAT_WMA):
+                skipped += 1
+                print(
+                    f"unsupported: {entry['index']:08x} "
+                    f"{entry['name'] or '-'} codec={format_name(fmt['tag'])}",
+                    file=sys.stderr,
+                )
+                continue
+            if fmt["tag"] == FORMAT_WMA and not decode_wma:
                 skipped += 1
                 print(
                     f"unsupported: {entry['index']:08x} "
@@ -285,20 +350,42 @@ def extract_entries(path, out_dir, bank, verbose=False):
 
             filename = safe_name(entry["name"], entry["index"])
             destination = out_dir / filename
-            header = wav_header(entry, data_size)
-
             source.seek(data_offset)
-            with destination.open("wb") as target:
-                target.write(header)
-                remaining = data_size
-                while remaining:
-                    chunk = source.read(min(1024 * 1024, remaining))
-                    if not chunk:
-                        raise XwbError(f"unexpected EOF reading entry {entry['index']:08x}")
-                    target.write(chunk)
-                    remaining -= len(chunk)
-                if data_size % 2:
-                    target.write(b"\0")
+            payload = source.read(data_size)
+            if len(payload) != data_size:
+                raise XwbError(f"unexpected EOF reading entry {entry['index']:08x}")
+
+            if fmt["tag"] == FORMAT_WMA:
+                if subprocess.run(
+                    ["ffmpeg", "-version"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                ).returncode != 0:
+                    skipped += 1
+                    print(
+                        f"unsupported: {entry['index']:08x} "
+                        f"{entry['name'] or '-'} codec=wma requires ffmpeg",
+                        file=sys.stderr,
+                    )
+                    continue
+                try:
+                    decode_wma_payload(entry, payload, destination)
+                except (subprocess.CalledProcessError, XwbError) as error:
+                    skipped += 1
+                    print(
+                        f"unsupported: {entry['index']:08x} "
+                        f"{entry['name'] or '-'} codec=wma decode failed: {error}",
+                        file=sys.stderr,
+                    )
+                    continue
+            else:
+                header = wav_header(entry, data_size)
+                with destination.open("wb") as target:
+                    target.write(header)
+                    target.write(payload)
+                    if data_size % 2:
+                        target.write(b"\0")
 
             extracted += 1
             if verbose:
@@ -319,6 +406,11 @@ def main():
     parser.add_argument("output_dir", type=Path, nargs="?", help="output directory")
     parser.add_argument("--list", action="store_true", help="list entries")
     parser.add_argument("--verbose", action="store_true", help="print extracted files")
+    parser.add_argument(
+        "--decode-wma",
+        action="store_true",
+        help="decode XACT WMA entries via ffmpeg after wrapping them as XWMA",
+    )
     args = parser.parse_args()
 
     try:
@@ -334,7 +426,11 @@ def main():
 
         if args.output_dir is not None:
             extracted, skipped = extract_entries(
-                args.input, args.output_dir, bank, verbose=args.verbose
+                args.input,
+                args.output_dir,
+                bank,
+                verbose=args.verbose,
+                decode_wma=args.decode_wma,
             )
             print(
                 f"Extracted {extracted} WAV files from {args.input.name}"
