@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
@@ -15,8 +15,22 @@ class BuildError(RuntimeError):
 class Runner:
     dry_run: bool = False
     verbose: bool = False
+    quiet: bool = False
+    _inline_status: bool = field(default=False, init=False)
 
     def log(self, message: str = "") -> None:
+        if self.quiet:
+            return
+        print(message)
+
+    def status(self, message: str = "", inline: bool = False, done: bool = False) -> None:
+        if inline:
+            print(f"\r\033[K{message}", end="\n" if done else "", flush=True)
+            self._inline_status = not done
+            return
+        if self._inline_status:
+            print()
+            self._inline_status = False
         print(message)
 
     def require_tool(self, name: str, hint: str) -> None:
@@ -33,6 +47,9 @@ class Runner:
             return subprocess.CompletedProcess(command, 0)
         if self.verbose:
             self.log("+ " + " ".join(command))
+        if self.quiet:
+            kwargs.setdefault("stdout", subprocess.DEVNULL)
+            kwargs.setdefault("stderr", subprocess.DEVNULL)
         try:
             return subprocess.run(command, check=True, **kwargs)
         except FileNotFoundError as error:

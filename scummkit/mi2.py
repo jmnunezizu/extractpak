@@ -8,6 +8,7 @@ from pathlib import Path
 from . import monster, voices, xwb
 from .audio import count_files, require_audio_tools
 from .paths import EXTRACTPAK
+from .progress import BuildProgress
 from .runner import BuildError, Runner, require_dir, require_file
 from .summary import BuildSummary, print_build_summary
 
@@ -20,6 +21,7 @@ class BuildOptions:
     audio: str
     dry_run: bool = False
     verbose: bool = False
+    quiet: bool = False
 
 
 def archive_name(audio: str) -> str:
@@ -29,9 +31,34 @@ def archive_name(audio: str) -> str:
         raise BuildError("unsupported MI2 audio format: use --audio ogg, flac, mp3, or raw") from error
 
 
+def _stage(runner: Runner, progress: BuildProgress, index: int, total: int, label: str) -> None:
+    if progress.enabled:
+        progress.start(label)
+    else:
+        runner.log(f"[{index}/{total}] {label}...")
+
+
+def _stage_done(progress: BuildProgress, label: str) -> None:
+    progress.done(label)
+
+
+def _bank_progress(runner: Runner, label: str):
+    last_reported = {"done": 0}
+
+    def report(done: int, total: int) -> None:
+        if not runner.quiet:
+            return
+        if done == total or done - last_reported["done"] >= 500:
+            last_reported["done"] = done
+            runner.status(f"  {label}: extracted {done}/{total} entries", inline=True, done=done == total)
+
+    return report
+
+
 def build(options: BuildOptions) -> None:
     started = time.monotonic()
-    runner = Runner(options.dry_run, options.verbose)
+    runner = Runner(options.dry_run, options.verbose, options.quiet)
+    progress = BuildProgress(5, enabled=options.quiet)
     pak = options.pak.expanduser()
     builder = options.builder.expanduser()
     out = options.out.expanduser()
@@ -77,28 +104,48 @@ def build(options: BuildOptions) -> None:
 
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
-    runner.log("[1/5] Extracting PAK assets...")
+    _stage(runner, progress, 1, 5, "Extracting PAK assets")
     runner.run([EXTRACTPAK, "--only", "classic/en", pak, extracted])
     src000 = extracted / "classic/en/monkey2.000"
     src001 = extracted / "classic/en/monkey2.001"
     require_file(src000, "extracted MI2 classic resource")
     require_file(src001, "extracted MI2 classic resource")
-    runner.log("[2/5] Applying Ultimate Talkie patches...")
+    _stage_done(progress, "Extracting PAK assets")
+    _stage(runner, progress, 2, 5, "Applying Ultimate Talkie patches")
     runner.run(["bspatch", src000, out / "monkey2.000", tools / "patch02.000"])
     runner.run(["bspatch", src001, out / "monkey2.001", tools / "patch02.001"])
+    _stage_done(progress, "Applying Ultimate Talkie patches")
 
     speech_wav.mkdir(parents=True, exist_ok=True)
     patch_wav.mkdir(parents=True, exist_ok=True)
-    runner.log("[3/5] Extracting XWB audio banks...")
+    _stage(runner, progress, 3, 5, "Extracting XWB audio banks")
     try:
         speech_bank = xwb.parse_xwb(audio_dir / "Speech.xwb")
         patch_bank = xwb.parse_xwb(audio_dir / "Patch.xwb")
-        xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
-        xwb.extract_entries(audio_dir / "Patch.xwb", patch_wav, patch_bank, verbose=options.verbose)
+        if options.quiet:
+            runner.status(
+                f"  audio banks: Speech.xwb {len(speech_bank['entries'])} entries; "
+                f"Patch.xwb {len(patch_bank['entries'])} entries"
+            )
+        xwb.extract_entries(
+            audio_dir / "Speech.xwb",
+            speech_wav,
+            speech_bank,
+            verbose=options.verbose,
+            progress=_bank_progress(runner, "Speech.xwb"),
+        )
+        xwb.extract_entries(
+            audio_dir / "Patch.xwb",
+            patch_wav,
+            patch_bank,
+            verbose=options.verbose,
+            progress=_bank_progress(runner, "Patch.xwb"),
+        )
     except xwb.XwbError as error:
         raise BuildError(f"failed to extract MI2 Special Edition XWB audio: {error}") from error
+    _stage_done(progress, "Extracting XWB audio banks")
 
-    runner.log("[4/5] Extracting and encoding voices...")
+    _stage(runner, progress, 4, 5, "Extracting and encoding voices")
     voices.process_mi2_voices(
         voices.Mi2VoiceOptions(
             builder=builder,
@@ -107,13 +154,15 @@ def build(options: BuildOptions) -> None:
             out=processed,
             audio=options.audio,
             verbose=options.verbose,
+            quiet=options.quiet,
         )
     )
+    _stage_done(progress, "Extracting and encoding voices")
 
     if options.audio == "raw":
         raise BuildError("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
     archive = out / archive_name(options.audio)
-    runner.log("[5/5] Building speech archive...")
+    _stage(runner, progress, 5, 5, "Building speech archive")
     try:
         monster_summary = monster.build_monster_archive(
             tools / "monster.tbl",
@@ -121,9 +170,11 @@ def build(options: BuildOptions) -> None:
             archive,
             options.audio,
             verbose=options.verbose,
+            quiet=options.quiet,
         )
     except monster.MonsterError as error:
         raise BuildError(f"failed to build MI2 speech archive: {error}") from error
+    _stage_done(progress, "Building speech archive")
     shutil.copy2(builder / "readme.txt", out / "readme.txt")
 
     print_build_summary(

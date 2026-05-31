@@ -11,6 +11,7 @@ from . import mi1_sbl, monster, music as mi1_music, sbl, voices, xwb
 from .audio import count_files, require_audio_tools
 from .mi2 import archive_name
 from .paths import EXTRACTPAK
+from .progress import BuildProgress
 from .runner import BuildError, Runner, require_dir, require_file
 from .summary import BuildSummary, print_build_summary
 
@@ -24,6 +25,7 @@ class BuildOptions:
     music: str = "hybrid"
     dry_run: bool = False
     verbose: bool = False
+    quiet: bool = False
     skip_sbl: bool = False
     skip_music: bool = False
 
@@ -141,6 +143,30 @@ def _count_root_files(path: Path, pattern: str) -> int:
     return sum(1 for item in path.glob(pattern) if item.is_file()) if path.exists() else 0
 
 
+def _stage(runner: Runner, progress: BuildProgress, index: int, total: int, label: str) -> None:
+    if progress.enabled:
+        progress.start(label)
+    else:
+        runner.log(f"[{index}/{total}] {label}...")
+
+
+def _stage_done(progress: BuildProgress, label: str) -> None:
+    progress.done(label)
+
+
+def _bank_progress(runner: Runner, label: str):
+    last_reported = {"done": 0}
+
+    def report(done: int, total: int) -> None:
+        if not runner.quiet:
+            return
+        if done == total or done - last_reported["done"] >= 500:
+            last_reported["done"] = done
+            runner.status(f"  {label}: extracted {done}/{total} entries", inline=True, done=done == total)
+
+    return report
+
+
 def _print_audio_diagnostics(out: Path, audio: str, music: str, injected: list[dict[str, object]] | None) -> None:
     se_music = out / f"se_music_{audio}"
     sbl_ids = {(int(item["room_id"]), int(item["sound_id"])) for item in injected or []}
@@ -171,7 +197,8 @@ def _print_audio_diagnostics(out: Path, audio: str, music: str, injected: list[d
 
 def build(options: BuildOptions) -> None:
     started = time.monotonic()
-    runner = Runner(options.dry_run, options.verbose)
+    runner = Runner(options.dry_run, options.verbose, options.quiet)
+    progress = BuildProgress(7, enabled=options.quiet)
     if options.audio != "ogg":
         raise BuildError("unsupported MI1 audio format: use --audio ogg; FLAC/MP3/raw are not validated for MI1 yet")
     if options.music not in ("cd", "hybrid", "se"):
@@ -228,28 +255,49 @@ def build(options: BuildOptions) -> None:
 
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
-    runner.log("[1/7] Extracting PAK assets...")
+    _stage(runner, progress, 1, 7, "Extracting PAK assets")
     runner.run([EXTRACTPAK, "--only", "classic/en", pak, extracted])
     src000 = extracted / "classic/en/monkey1.000"
     src001 = extracted / "classic/en/monkey1.001"
     require_file(src000, "extracted MI1 classic resource")
     require_file(src001, "extracted MI1 classic resource")
-    runner.log("[2/7] Applying Ultimate Talkie patches...")
+    _stage_done(progress, "Extracting PAK assets")
+    _stage(runner, progress, 2, 7, "Applying Ultimate Talkie patches")
     runner.run(["bspatch", src000, out / "monkey.000", tools / "patch10.000"])
     runner.run(["bspatch", src001, out / "monkey.001", tools / "patch10.001"])
+    _stage_done(progress, "Applying Ultimate Talkie patches")
 
     speech_wav.mkdir(parents=True, exist_ok=True)
     sfx_wav.mkdir(parents=True, exist_ok=True)
-    runner.log("[3/7] Extracting XWB audio banks...")
+    _stage(runner, progress, 3, 7, "Extracting XWB audio banks")
     try:
         speech_bank = xwb.parse_xwb(audio_dir / "Speech.xwb")
         sfx_bank = xwb.parse_xwb(audio_dir / "SFXNew.xwb")
-        xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
-        xwb.extract_entries(audio_dir / "SFXNew.xwb", sfx_wav, sfx_bank, verbose=options.verbose, decode_wma=True)
+        if options.quiet:
+            runner.status(
+                f"  audio banks: Speech.xwb {len(speech_bank['entries'])} entries; "
+                f"SFXNew.xwb {len(sfx_bank['entries'])} entries"
+            )
+        xwb.extract_entries(
+            audio_dir / "Speech.xwb",
+            speech_wav,
+            speech_bank,
+            verbose=options.verbose,
+            progress=_bank_progress(runner, "Speech.xwb"),
+        )
+        xwb.extract_entries(
+            audio_dir / "SFXNew.xwb",
+            sfx_wav,
+            sfx_bank,
+            verbose=options.verbose,
+            decode_wma=True,
+            progress=_bank_progress(runner, "SFXNew.xwb"),
+        )
     except xwb.XwbError as error:
         raise BuildError(f"failed to extract MI1 Special Edition XWB audio: {error}") from error
+    _stage_done(progress, "Extracting XWB audio banks")
 
-    runner.log("[4/7] Extracting and encoding voices...")
+    _stage(runner, progress, 4, 7, "Extracting and encoding voices")
     voices.process_mi1_voices(
         voices.Mi1VoiceOptions(
             builder=builder,
@@ -258,11 +306,13 @@ def build(options: BuildOptions) -> None:
             out=processed,
             audio=options.audio,
             verbose=options.verbose,
+            quiet=options.quiet,
         )
     )
+    _stage_done(progress, "Extracting and encoding voices")
 
     archive = out / archive_name(options.audio).replace("monkey2", "monkey")
-    runner.log("[5/7] Building speech archive...")
+    _stage(runner, progress, 5, 7, "Building speech archive")
     try:
         monster_summary = monster.build_monster_archive(
             tools / "monster.tbl",
@@ -270,13 +320,15 @@ def build(options: BuildOptions) -> None:
             archive,
             options.audio,
             verbose=options.verbose,
+            quiet=options.quiet,
         )
     except monster.MonsterError as error:
         raise BuildError(f"failed to build MI1 speech archive: {error}") from error
+    _stage_done(progress, "Building speech archive")
 
     injected = None
     if not options.skip_sbl:
-        runner.log("[6/7] Injecting SBL resources...")
+        _stage(runner, progress, 6, 7, "Injecting SBL resources")
         try:
             injected = mi1_sbl.inject_mi1_sbl(
                 builder,
@@ -288,11 +340,13 @@ def build(options: BuildOptions) -> None:
             )
         except (OSError, mi1_sbl.InjectError, sbl.SblError) as error:
             raise BuildError(str(error)) from error
+        _stage_done(progress, "Injecting SBL resources")
     else:
-        runner.log("[6/7] Skipping SBL resource injection.")
+        _stage(runner, progress, 6, 7, "Skipping SBL resource injection")
+        _stage_done(progress, "Skipping SBL resource injection")
 
     if not options.skip_music:
-        runner.log("[7/7] Converting music...")
+        _stage(runner, progress, 7, 7, "Converting music")
         mi1_music.process_mi1_music(
             mi1_music.Mi1MusicOptions(
                 audio_dir=audio_dir,
@@ -300,6 +354,7 @@ def build(options: BuildOptions) -> None:
                 work=music_work,
                 audio=options.audio,
                 verbose=options.verbose,
+                quiet=options.quiet,
             )
         )
         copied = _copy_default_music_to_root(out, options.audio, options.music, options.verbose)
@@ -307,11 +362,14 @@ def build(options: BuildOptions) -> None:
             f"Default root music tracks: {copied} files "
             f"({_root_music_policy(options.audio, options.music)})"
         )
+        _stage_done(progress, "Converting music")
     else:
-        runner.log("[7/7] Skipping music conversion.")
+        _stage(runner, progress, 7, 7, "Skipping music conversion")
+        _stage_done(progress, "Skipping music conversion")
 
     shutil.copy2(builder / "readme.txt", out / "readme.txt")
-    _print_audio_diagnostics(out, options.audio, options.music, injected)
+    if not options.quiet:
+        _print_audio_diagnostics(out, options.audio, options.music, injected)
     generated = [out / name for name in ("monkey.000", "monkey.001", archive.name, "readme.txt")]
     if not options.skip_music:
         generated.append(out / "music-root-map.txt")

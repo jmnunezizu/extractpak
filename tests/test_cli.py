@@ -27,6 +27,60 @@ def test_cli_argument_parsing() -> None:
     assert args.audio == "ogg"
     assert args.music == "hybrid"
     assert args.verbose is True
+    assert args.quiet is False
+
+
+def test_cli_build_quiet_argument_parsing() -> None:
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        [
+            "build",
+            "mi2",
+            "--pak",
+            "monkey2.pak",
+            "--builder",
+            "builder",
+            "--out",
+            "out",
+            "--audio",
+            "ogg",
+            "--quiet",
+        ]
+    )
+
+    assert args.command == "build"
+    assert args.game == "mi2"
+    assert args.quiet is True
+    assert args.verbose is False
+
+
+def test_cli_build_rejects_quiet_with_verbose() -> None:
+    import pytest
+
+    from scummkit.runner import BuildError
+
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        [
+            "build",
+            "mi2",
+            "--pak",
+            "monkey2.pak",
+            "--builder",
+            "builder",
+            "--out",
+            "out",
+            "--audio",
+            "ogg",
+            "--quiet",
+            "--verbose",
+        ]
+    )
+
+    with pytest.raises(BuildError, match="either --quiet or --verbose"):
+        from scummkit.commands import build
+
+        build.run(args)
 
 
 def test_cli_mi1_music_argument_parsing() -> None:
@@ -228,10 +282,11 @@ def test_scripts_directory_contains_no_required_build_scripts() -> None:
 
 def test_doctor_registration_with_out() -> None:
     parser = cli.build_parser()
-    args = parser.parse_args(["doctor", "--out", "/tmp/scummkit-test"])
+    args = parser.parse_args(["doctor", "--out", "/tmp/scummkit-test", "--json"])
 
     assert args.command == "doctor"
     assert args.out == Path("/tmp/scummkit-test")
+    assert args.json is True
 
 
 def test_doctor_success_with_monkeypatched_tools(tmp_path: Path, monkeypatch) -> None:
@@ -264,6 +319,40 @@ def test_doctor_failure_when_required_tool_missing(tmp_path: Path, monkeypatch) 
 
     assert doctor.exit_code(checks) == 1
     assert any(check.name == "vgmstream-cli" and not check.ok for check in checks)
+
+
+def test_doctor_json_reports_overall_status(tmp_path: Path, monkeypatch) -> None:
+    import json
+
+    from scummkit import doctor
+
+    extractpak = tmp_path / "extractpak"
+    extractpak.write_text("#!/bin/sh\n", encoding="utf-8")
+    extractpak.chmod(0o755)
+
+    monkeypatch.setattr(doctor, "EXTRACTPAK", extractpak)
+    monkeypatch.setattr(doctor.shutil, "which", lambda name: f"/bin/{name}")
+
+    payload = json.loads(doctor.checks_to_json(doctor.run_checks()))
+
+    assert payload["ok"] is True
+    assert {check["name"] for check in payload["checks"]} >= {"python", "ffmpeg", "sox"}
+
+
+def test_build_progress_prints_stage_bar(capsys) -> None:
+    from scummkit.progress import BuildProgress
+
+    progress = BuildProgress(total=2, enabled=True, width=4)
+    progress.start("Extracting PAK assets")
+    progress.done("Extracting PAK assets")
+    progress.start("Building speech archive")
+    progress.done("Building speech archive")
+
+    output = capsys.readouterr().out
+    assert "[----] 0/2 Extracting PAK assets..." in output
+    assert "[##--] 1/2 Extracting PAK assets done" in output
+    assert "[##--] 1/2 Building speech archive..." in output
+    assert "[####] 2/2 Building speech archive done" in output
 
 
 def test_build_summary_prints_key_fields(capsys) -> None:

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 import shutil
 import sys
+from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -112,6 +114,14 @@ def print_checks(checks: list[DoctorCheck]) -> None:
     for check in checks:
         marker = "[ok]" if check.ok else "[fail]"
         print(f"{marker} {check.name} {check.detail}")
+
+
+def checks_to_json(checks: list[DoctorCheck]) -> str:
+    payload = {
+        "ok": exit_code(checks) == 0,
+        "checks": [asdict(check) for check in checks],
+    }
+    return json.dumps(payload, indent=2, sort_keys=True)
 
 
 def exit_code(checks: list[DoctorCheck]) -> int:

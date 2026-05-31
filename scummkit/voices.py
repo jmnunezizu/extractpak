@@ -19,6 +19,7 @@ class Mi1VoiceOptions:
     audio: str
     dry_run: bool = False
     verbose: bool = False
+    quiet: bool = False
 
 
 @dataclass
@@ -30,6 +31,7 @@ class Mi2VoiceOptions:
     audio: str
     dry_run: bool = False
     verbose: bool = False
+    quiet: bool = False
 
 
 def final_ext(audio: str) -> str:
@@ -69,7 +71,9 @@ def _sample(samples: Path, name: str) -> Path:
 def _normalize_wavs(runner: Runner, src_dir: Path, label: str, samples: Path) -> None:
     wavs = sorted(src_dir.glob("*.wav"))
     runner.log(f"  normalizing {len(wavs)} {label} WAV file(s)...")
-    for wav in wavs:
+    if runner.quiet:
+        runner.status(f"  {label}: normalizing {len(wavs)} WAV file(s)", inline=True)
+    for index, wav in enumerate(wavs, 1):
         dst = samples / wav.name
         if runner.verbose:
             runner.log(f"normalise {label}/{wav.name} -> samples-wav/{wav.name}")
@@ -82,6 +86,12 @@ def _normalize_wavs(runner: Runner, src_dir: Path, label: str, samples: Path) ->
                 runner.run(["sox", wav, "-D", dst])
             else:
                 raise
+        if runner.quiet and (index == len(wavs) or index % 500 == 0):
+            runner.status(
+                f"  {label}: normalized {index}/{len(wavs)} WAV file(s)",
+                inline=True,
+                done=index == len(wavs),
+            )
 
 
 def _trim(runner: Runner, samples: Path, src: str, dst: str, start: str, length: str) -> None:
@@ -228,11 +238,19 @@ def _encode_samples(runner: Runner, samples: Path, final: Path, audio: str) -> N
         final.mkdir(parents=True, exist_ok=True)
     wavs = sorted(samples.glob("*.wav"))
     runner.log(f"  encoding {len(wavs)} sample(s) as {audio}...")
-    for wav in wavs:
+    if runner.quiet:
+        runner.status(f"  voices: encoding {len(wavs)} sample(s) as {audio}", inline=True)
+    for index, wav in enumerate(wavs, 1):
         require_file(wav)
         if runner.verbose:
             runner.log(f"encode {audio} {wav.stem}")
         encode_wav(runner, wav, final / f"{wav.stem}.{final_ext(audio)}", audio)
+        if runner.quiet and (index == len(wavs) or index % 500 == 0):
+            runner.status(
+                f"  voices: encoded {index}/{len(wavs)} sample(s)",
+                inline=True,
+                done=index == len(wavs),
+            )
 
 
 def _monster_ref_names(table: Path) -> set[str]:
@@ -250,7 +268,7 @@ def _write_coverage(out: Path, refs: set[str], samples: set[str]) -> tuple[int, 
 
 
 def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
-    runner = Runner(options.dry_run, options.verbose)
+    runner = Runner(options.dry_run, options.verbose, options.quiet)
     builder = options.builder.expanduser()
     tools = builder / "tools"
     samples = options.out.expanduser() / "samples-wav"
@@ -281,6 +299,8 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     _normalize_wavs(runner, options.speech_wav, "speech", samples)
     normalized_count = count_files(samples, "*.wav")
     runner.log("  applying voice.bat special cases...")
+    if runner.quiet:
+        runner.status("  voices: applying MI1 voice.bat special cases")
     _make_mi1_special_cases(runner, tools, samples, temp)
     sample_count = count_files(samples, "*.wav")
     _encode_samples(runner, samples, final, options.audio)
@@ -308,7 +328,7 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
 
 
 def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
-    runner = Runner(options.dry_run, options.verbose)
+    runner = Runner(options.dry_run, options.verbose, options.quiet)
     builder = options.builder.expanduser()
     tools = builder / "tools"
     samples = options.out.expanduser() / "samples-wav"
@@ -341,6 +361,8 @@ def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     _normalize_wavs(runner, options.patch_wav, "patch", samples)
     normalized_count = count_files(samples, "*.wav")
     runner.log("  applying voice.bat special cases...")
+    if runner.quiet:
+        runner.status("  voices: applying MI2 voice.bat special cases")
     _make_mi2_special_cases(runner, tools, samples, temp)
     sample_count = count_files(samples, "*.wav")
     _encode_samples(runner, samples, final, options.audio)

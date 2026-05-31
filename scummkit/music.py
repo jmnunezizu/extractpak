@@ -15,6 +15,7 @@ class Mi1MusicOptions:
     audio: str
     dry_run: bool = False
     verbose: bool = False
+    quiet: bool = False
 
 
 CD_TRACKS: list[tuple[str, str, list[str]]] = [
@@ -100,7 +101,7 @@ def _sox_track(runner: Runner, src_dir: Path, src: str, out_dir: Path, dst: str,
 
 
 def process_mi1_music(options: Mi1MusicOptions) -> None:
-    runner = Runner(options.dry_run, options.verbose)
+    runner = Runner(options.dry_run, options.verbose, options.quiet)
     audio_dir = options.audio_dir.expanduser()
     out = options.out.expanduser()
     work = options.work.expanduser()
@@ -133,28 +134,59 @@ def process_mi1_music(options: Mi1MusicOptions) -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
     runner.log("  decoding classic CD music bank...")
+    if runner.quiet:
+        runner.status("  music: decoding 1 classic CD XWB bank")
     _decode_bank(runner, audio_dir / "MusicOriginal.xwb", original, "classic CD music")
     runner.log(f"  converting {len(CD_TRACKS)} classic CD tracks...")
-    for src, dst, effects in CD_TRACKS:
+    if runner.quiet:
+        runner.status(f"  music: converting {len(CD_TRACKS)} classic CD track(s)")
+    for index, (src, dst, effects) in enumerate(CD_TRACKS, 1):
         _sox_track(runner, original, src, cd_out, dst, effects, "cd music")
+        if runner.quiet and (index == len(CD_TRACKS) or index % 10 == 0):
+            runner.status(
+                f"  music: converted {index}/{len(CD_TRACKS)} classic CD track(s)",
+                inline=True,
+                done=index == len(CD_TRACKS),
+            )
 
     runner.log("  decoding Special Edition music banks...")
+    if runner.quiet:
+        runner.status("  music: decoding 2 Special Edition XWB banks")
     _decode_bank(runner, audio_dir / "MusicNew.xwb", new, "Special Edition music")
     _decode_bank(runner, audio_dir / "Ambience.xwb", ambience, "Special Edition ambience")
     runner.log(f"  converting {len(SE_MUSIC_TRACKS) + len(SE_AMBIENCE_TRACKS)} Special Edition tracks...")
+    se_total = len(SE_MUSIC_TRACKS) + len(SE_AMBIENCE_TRACKS) + 4
+    se_done = 0
+    if runner.quiet:
+        runner.status(f"  music: converting {se_total} Special Edition track operation(s)")
     for src, dst, effects in SE_MUSIC_TRACKS:
         _sox_track(runner, new, src, se_out, dst, effects, "se music")
+        se_done += 1
+        if runner.quiet and se_done % 10 == 0:
+            runner.status(
+                f"  music: converted {se_done}/{se_total} Special Edition operation(s)",
+                inline=True,
+            )
 
     require_file(ambience / "AMB_ScummBar_01.wav", "decoded SCUMM Bar ambience")
     require_file(new / "track9.wav", "decoded Special Edition music track")
     runner.run(["sox", ambience / "AMB_ScummBar_01.wav", "-V0", work / "temp-scummbar.wav", "trim", "0.000", "89.687"])
     runner.run(["sox", work / "temp-scummbar.wav", new / "track9.wav", "-m", "-V0", work / "track9o.wav"])
     runner.run(["sox", work / "track9o.wav", "-V0", se_out / "track8.ogg"])
+    se_done += 1
 
     for src, dst in [("track23.wav", "track22.ogg"), ("track24.wav", "track23.ogg"), ("track25.wav", "track24.ogg")]:
         _sox_track(runner, original, src, se_out, dst, ["compand", "0.0,0.5", "-5.3,-5.3,-0,-5.3", "5", "-99"], "se music")
+        se_done += 1
     for src, dst, effects in SE_AMBIENCE_TRACKS:
         _sox_track(runner, ambience, src, se_out, dst, effects, "se ambience")
+        se_done += 1
+        if runner.quiet and (se_done == se_total or se_done % 10 == 0):
+            runner.status(
+                f"  music: converted {se_done}/{se_total} Special Edition operation(s)",
+                inline=True,
+                done=se_done == se_total,
+            )
 
     runner.log("MI1 music conversion complete.")
     runner.log(f"  classic CD music: {count_files(cd_out, '*.ogg')} files in {cd_out}")

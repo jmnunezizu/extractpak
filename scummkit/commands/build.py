@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from .. import mi1, mi2
+from ..runner import BuildError
 
 
 def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -17,6 +18,11 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
         game_parser.add_argument("--audio", choices=["ogg", "flac", "mp3", "raw"], required=True)
         game_parser.add_argument("--dry-run", action="store_true")
         game_parser.add_argument("--verbose", action="store_true")
+        game_parser.add_argument(
+            "--quiet",
+            action="store_true",
+            help="suppress external-tool chatter and show stage progress only",
+        )
 
     mi1_parser = games.add_parser("mi1", help="build The Secret of Monkey Island Ultimate Talkie")
     add_common(mi1_parser)
@@ -34,6 +40,8 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
 
 
 def run(args: argparse.Namespace) -> None:
+    if args.quiet and args.verbose:
+        raise BuildError("use either --quiet or --verbose, not both")
     if args.game == "mi1":
         mi1.build(
             mi1.BuildOptions(
@@ -44,6 +52,7 @@ def run(args: argparse.Namespace) -> None:
                 music=args.music,
                 dry_run=args.dry_run,
                 verbose=args.verbose,
+                quiet=args.quiet,
                 skip_sbl=args.skip_sbl,
                 skip_music=args.skip_music,
             )
@@ -57,8 +66,8 @@ def run(args: argparse.Namespace) -> None:
                 audio=args.audio,
                 dry_run=args.dry_run,
                 verbose=args.verbose,
+                quiet=args.quiet,
             )
         )
     else:
         raise ValueError("unsupported build game")
-

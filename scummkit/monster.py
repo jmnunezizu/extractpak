@@ -116,6 +116,7 @@ def _build_archive(
     fmt: str,
     dry_run: bool = False,
     verbose: bool = False,
+    quiet: bool = False,
 ) -> MonsterSummary:
     if fmt == "raw":
         raise MonsterError("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
@@ -161,13 +162,17 @@ def _build_archive(
     if dry_run:
         final_size = 4 + index_size + sum(path.stat().st_size for _offset, _name, path in packed_entries)
         summary = MonsterSummary(len(entries), len(packed_entries), len(missing), len(unreferenced), final_size)
-        print_summary(summary)
-        print(f"[dry-run] would write {out}")
+        if not quiet:
+            print_summary(summary)
+            print(f"[dry-run] would write {out}")
         return summary
 
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    for offset, name, path in packed_entries:
+    if quiet:
+        print(f"  monster: packing {len(packed_entries)} referenced sample(s)")
+
+    for index_no, (offset, name, path) in enumerate(packed_entries, 1):
         validate_payload(path, fmt)
         payload = path.read_bytes()
         if not payload:
@@ -176,6 +181,12 @@ def _build_archive(
             print(f"pack 0x{offset:08x} {name}{ext} bytes={len(payload)}")
         index.extend(struct.pack(">IIII", offset, len(data), 0, len(payload)))
         data.extend(payload)
+        if quiet and (index_no == len(packed_entries) or index_no % 500 == 0):
+            print(
+                f"\r\033[K  monster: packed {index_no}/{len(packed_entries)} sample(s)",
+                end="\n" if index_no == len(packed_entries) else "",
+                flush=True,
+            )
 
     tmp = out.with_suffix(out.suffix + ".tmp")
     with tmp.open("wb") as f:
@@ -186,8 +197,9 @@ def _build_archive(
 
     verify_archive(out, quiet=True)
     summary = MonsterSummary(len(entries), len(packed_entries), len(missing), len(unreferenced), out.stat().st_size)
-    print_summary(summary)
-    print(f"archive: {out}")
+    if not quiet:
+        print_summary(summary)
+        print(f"archive: {out}")
     return summary
 
 
@@ -209,8 +221,9 @@ def build_monster_archive(
     fmt: str,
     dry_run: bool = False,
     verbose: bool = False,
+    quiet: bool = False,
 ) -> MonsterSummary:
-    return _build_archive(table, samples, out, fmt, dry_run=dry_run, verbose=verbose)
+    return _build_archive(table, samples, out, fmt, dry_run=dry_run, verbose=verbose, quiet=quiet)
 
 
 def print_summary(summary: MonsterSummary) -> None:

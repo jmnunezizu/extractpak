@@ -186,12 +186,14 @@ on before you start a long build:
 ```bash
 python3 -m scummkit doctor
 python3 -m scummkit doctor --out /tmp/scummkit-test
+python3 -m scummkit doctor --json
 ```
 
 It verifies the Python version, required external tools (`ffmpeg`, `sox`,
 `vgmstream-cli`, and the local `extractpak` helper), package import health, and
 optionally whether an output directory can be written. It exits with status `0`
 when all required checks pass and non-zero when any required check fails.
+Use `--json` when you need machine-readable output for scripts or CI probes.
 
 ## Extracting GOG Installers
 
@@ -223,12 +225,15 @@ MonkeyIsland2/app/monkey2.pak
 MonkeyIsland2/app/audio/
 ```
 
-## Supported Games
+## Support Matrix
 
-| Game                               | Status   | Notes                                                                                                                                                                                                     |
-| ---------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Secret of Monkey Island        | Complete | Speech, music, SBL, ambience, and root soundtrack selection. Ogg is the validated native output mode.                                                                                                     |
-| Monkey Island 2: LeChuck's Revenge | Complete | Speech and music/resource support through the patched ScummVM game output. Ogg is the primary validated speech archive output; FLAC/MP3 use the same compressed archive path when encoders are available. |
+| Area                               | Support level           | Notes                                                                                                                                                                                                     |
+| ---------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The Secret of Monkey Island        | Complete, Ogg validated | Speech archive generation, music conversion, SBL injection, ambience, and root soundtrack selection. FLAC/MP3/raw are not currently validated for the MI1 build pipeline.                                |
+| Monkey Island 2: LeChuck's Revenge | Complete, Ogg validated | Speech archive generation and patched ScummVM output. FLAC/MP3 use the same compressed archive path when encoders are available. Raw `monster.sou` generation is not implemented.                       |
+| MI1 music modes                    | `cd`, `hybrid`, `se`    | `hybrid` is the default. `cd` uses classic CD root tracks. `se` uses the full Special Edition root soundtrack.                                                                                            |
+| Build output mode                  | normal, quiet, verbose  | Normal mode prints stage and summary output. `--quiet` suppresses external-tool chatter and shows a stage progress bar plus known item counts. `--verbose` prints detailed command and file-level output. |
+| Doctor output                      | text, JSON              | `scummkit doctor` prints human-readable checks. `scummkit doctor --json` emits machine-readable check status and details.                                                                                |
 
 ## Building Monkey Island 1
 
@@ -265,6 +270,8 @@ Options:
 - `--skip-sbl`: skip native SBL sound-effect injection.
 - `--skip-music`: skip music conversion and root soundtrack copying.
 - `--dry-run`: print planned steps without writing final output.
+- `--quiet`: suppress external-tool chatter and show stage progress plus known
+  item counts.
 - `--verbose`: print detailed processing and root soundtrack mapping output.
 
 Expected output:
@@ -339,6 +346,8 @@ Options:
 - `--audio ogg|flac|mp3`: target compressed speech format. Ogg is the primary
   validated target.
 - `--dry-run`: print planned steps without writing final output.
+- `--quiet`: suppress external-tool chatter and show stage progress plus known
+  item counts.
 - `--verbose`: print detailed processing output.
 
 Expected output:

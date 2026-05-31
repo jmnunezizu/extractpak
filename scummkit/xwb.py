@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Extract PCM/ADPCM entries from Microsoft XACT wave banks."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
@@ -10,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Callable
 
 
 SEGMENT_COUNT = 5
@@ -319,7 +322,7 @@ def decode_wma_payload(entry, payload, destination):
             raise XwbError(message)
 
 
-def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
+def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False, progress: Callable[[int, int], None] | None = None):
     wave_segment = bank["segments"][4]
     if wave_segment["length"] == 0:
         raise XwbError("wave data segment is empty")
@@ -327,12 +330,15 @@ def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
     out_dir.mkdir(parents=True, exist_ok=True)
     extracted = 0
     skipped = 0
+    total = len(bank["entries"])
 
     with path.open("rb") as source:
         for entry in bank["entries"]:
             fmt = entry["format"]
             if fmt["tag"] not in (FORMAT_PCM, FORMAT_ADPCM, FORMAT_WMA):
                 skipped += 1
+                if progress is not None:
+                    progress(extracted + skipped, total)
                 print(
                     f"unsupported: {entry['index']:08x} "
                     f"{entry['name'] or '-'} codec={format_name(fmt['tag'])}",
@@ -341,6 +347,8 @@ def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
                 continue
             if fmt["tag"] == FORMAT_WMA and not decode_wma:
                 skipped += 1
+                if progress is not None:
+                    progress(extracted + skipped, total)
                 print(
                     f"unsupported: {entry['index']:08x} "
                     f"{entry['name'] or '-'} codec={format_name(fmt['tag'])}",
@@ -363,6 +371,8 @@ def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
             if fmt["tag"] == FORMAT_WMA:
                 if shutil.which("ffmpeg") is None:
                     skipped += 1
+                    if progress is not None:
+                        progress(extracted + skipped, total)
                     print(
                         f"unsupported: {entry['index']:08x} "
                         f"{entry['name'] or '-'} codec=wma requires ffmpeg",
@@ -373,6 +383,8 @@ def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
                     decode_wma_payload(entry, payload, destination)
                 except (subprocess.CalledProcessError, XwbError) as error:
                     skipped += 1
+                    if progress is not None:
+                        progress(extracted + skipped, total)
                     print(
                         f"unsupported: {entry['index']:08x} "
                         f"{entry['name'] or '-'} codec=wma decode failed: {error}",
@@ -388,6 +400,9 @@ def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
                         target.write(b"\0")
 
             extracted += 1
+            done = extracted + skipped
+            if progress is not None:
+                progress(done, total)
             if verbose:
                 print(
                     f"extracted {destination} "
