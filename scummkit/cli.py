@@ -1,40 +1,20 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
-from . import mi1, mi1_resources, mi2
+from .commands import build, inspect, monster, sbl, xwb
 from .runner import BuildError
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="scummkit")
     sub = parser.add_subparsers(dest="command", required=True)
-    build = sub.add_parser("build", help="build an Ultimate Talkie output folder")
-    games = build.add_subparsers(dest="game", required=True)
-
-    def add_common(game_parser: argparse.ArgumentParser) -> None:
-        game_parser.add_argument("--pak", type=Path, required=True)
-        game_parser.add_argument("--builder", type=Path, required=True)
-        game_parser.add_argument("--out", type=Path, required=True)
-        game_parser.add_argument("--audio", choices=["ogg", "flac", "mp3", "raw"], required=True)
-        game_parser.add_argument("--dry-run", action="store_true")
-        game_parser.add_argument("--verbose", action="store_true")
-
-    mi1_parser = games.add_parser("mi1", help="build The Secret of Monkey Island Ultimate Talkie")
-    add_common(mi1_parser)
-    mi1_parser.add_argument(
-        "--music",
-        choices=["cd", "hybrid", "se"],
-        default="hybrid",
-        help="root soundtrack set for MI1; default: hybrid",
-    )
-    mi1_parser.add_argument("--skip-sbl", action="store_true")
-    mi1_parser.add_argument("--skip-music", action="store_true")
-
-    mi2_parser = games.add_parser("mi2", help="build Monkey Island 2 Ultimate Talkie")
-    add_common(mi2_parser)
-    mi1_resources.add_inspect_parser(sub)
+    build.register(sub)
+    xwb.register(sub)
+    monster.register(sub)
+    sbl.register_wav2sbl(sub)
+    sbl.register_inject(sub)
+    inspect.register(sub)
     return parser
 
 
@@ -42,33 +22,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        if args.command == "build" and args.game == "mi1":
-            mi1.build(
-                mi1.BuildOptions(
-                    pak=args.pak,
-                    builder=args.builder,
-                    out=args.out,
-                    audio=args.audio,
-                    music=args.music,
-                    dry_run=args.dry_run,
-                    verbose=args.verbose,
-                    skip_sbl=args.skip_sbl,
-                    skip_music=args.skip_music,
-                )
-            )
-        elif args.command == "build" and args.game == "mi2":
-            mi2.build(
-                mi2.BuildOptions(
-                    pak=args.pak,
-                    builder=args.builder,
-                    out=args.out,
-                    audio=args.audio,
-                    dry_run=args.dry_run,
-                    verbose=args.verbose,
-                )
-            )
+        if args.command == "build":
+            build.run(args)
         elif args.command == "inspect":
-            mi1_resources.run_inspect(args)
+            inspect.run(args)
+        elif args.command == "xwb":
+            xwb.run(parser, args)
+        elif args.command == "monster":
+            monster.run(parser, args)
+        elif args.command == "wav2sbl":
+            sbl.run_wav2sbl(parser, args)
+        elif args.command == "inject" and args.game == "mi1" and args.inject_action == "sbl":
+            sbl.run_inject_mi1_sbl(args)
         else:
             parser.error("unsupported command")
         return 0

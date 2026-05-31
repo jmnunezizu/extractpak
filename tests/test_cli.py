@@ -77,6 +77,78 @@ def test_cli_inspect_argument_parsing() -> None:
     assert args.id == 71
 
 
+def test_cli_helper_argument_parsing() -> None:
+    parser = cli.build_parser()
+
+    xwb_args = parser.parse_args(["xwb", "Speech.xwb", "out", "--decode-wma"])
+    assert xwb_args.command == "xwb"
+    assert xwb_args.input == Path("Speech.xwb")
+    assert xwb_args.output_dir == Path("out")
+    assert xwb_args.decode_wma is True
+
+    monster_args = parser.parse_args(
+        [
+            "monster",
+            "--table",
+            "monster.tbl",
+            "--samples",
+            "samples",
+            "--out",
+            "monkey.sog",
+            "--format",
+            "ogg",
+        ]
+    )
+    assert monster_args.command == "monster"
+    assert monster_args.format == "ogg"
+
+    sbl_args = parser.parse_args(["wav2sbl", "in.wav", "out.sbl"])
+    assert sbl_args.command == "wav2sbl"
+    assert sbl_args.input == Path("in.wav")
+    assert sbl_args.output == Path("out.sbl")
+
+
+def test_command_modules_register_public_commands() -> None:
+    parser = cli.build_parser()
+
+    for argv, expected in [
+        (["build", "mi2", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"], "build"),
+        (["inspect", "mi1", "resources", "--game-dir", "game"], "inspect"),
+        (["monster", "--verify", "monkey.sog"], "monster"),
+        (["xwb", "Speech.xwb", "--list"], "xwb"),
+        (["wav2sbl", "--verify", "sound.sbl"], "wav2sbl"),
+    ]:
+        assert parser.parse_args(argv).command == expected
+
+
+def test_cli_inject_mi1_sbl_argument_parsing() -> None:
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        [
+            "inject",
+            "mi1",
+            "sbl",
+            "--builder",
+            "builder",
+            "--samples-wav",
+            "samples",
+            "--monkey000",
+            "monkey.000",
+            "--monkey001",
+            "monkey.001",
+            "--work",
+            "work",
+            "--dry-run",
+        ]
+    )
+
+    assert args.command == "inject"
+    assert args.game == "mi1"
+    assert args.inject_action == "sbl"
+    assert args.builder == Path("builder")
+    assert args.dry_run is True
+
+
 def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -> None:
     from scummkit import mi2
 
@@ -101,6 +173,56 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
 
     assert not (out / "monkey2.000").exists()
     assert not (out / "monkey2.sog").exists()
+
+
+def test_voice_processing_plans_without_external_tools() -> None:
+    from scummkit import voices
+
+    mi1_plan = voices.plan_voice_steps("mi1", "ogg")
+    mi2_plan = voices.plan_voice_steps("mi2", "ogg")
+
+    assert any("SFXNew.xwb" in step for step in mi1_plan)
+    assert any("_cdt_*" in step for step in mi2_plan)
+    assert any("final-ogg" in step for step in mi1_plan)
+
+
+def test_python_code_does_not_reference_shell_scripts() -> None:
+    root = Path(__file__).resolve().parents[1]
+    offenders = []
+    for path in (root / "scummkit").rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        for needle in (
+            "scripts/",
+            "process-mi1-music.sh",
+            "process-mi1-voices.sh",
+            "process-mi2-voices.sh",
+            "build-mi1-talkie.sh",
+            "build-mi2-talkie.sh",
+            "process-mi1-sbl.sh",
+        ):
+            if needle in text:
+                offenders.append((path.relative_to(root), needle))
+
+    assert offenders == []
+
+
+def test_scripts_directory_contains_no_required_build_scripts() -> None:
+    root = Path(__file__).resolve().parents[1]
+    scripts = root / "scripts"
+    if not scripts.exists():
+        return
+
+    required_scripts = {
+        "process-mi1-music.sh",
+        "process-mi1-voices.sh",
+        "process-mi2-voices.sh",
+        "build-mi1-talkie.sh",
+        "build-mi2-talkie.sh",
+        "process-mi1-sbl.sh",
+    }
+    present = {path.name for path in scripts.iterdir() if path.is_file()}
+
+    assert present.isdisjoint(required_scripts)
 
 
 def _write_music_fixture(out: Path) -> None:

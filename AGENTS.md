@@ -13,9 +13,8 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
   folders as local inputs only.
 - Keep MI1 and MI2 behavior separate. Do not refactor MI2 while working on MI1
   unless the change is clearly shared infrastructure and is covered by tests.
-- Prefer Python package code under `scummkit/` for new orchestration.
-  Existing shell scripts under `scripts/` are compatibility wrappers and
-  historical references.
+- Keep orchestration in Python package code under `scummkit/`. The build
+  pipeline should not require shell scripts.
 - Use `pathlib`, `argparse`, `dataclasses`, `subprocess`, and `struct` in
   Python code, following the existing package style.
 - Keep Ogg as the primary validated output path. Be explicit when FLAC/MP3/raw
@@ -34,7 +33,7 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
 Run the lightweight checks after code changes:
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile scummkit/*.py
+PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
 python3 -m pytest
 ```
 
@@ -70,30 +69,22 @@ python3 -m scummkit build mi2 \
 ├── docs/                              # Reverse-engineering notes and builder analysis.
 │   ├── mi1-ultimate-talkie-builder-analysis.md  # MI1 builder pipeline, formats, and parity notes.
 │   └── mi2-ultimate-talkie-builder-analysis.md  # MI2 builder pipeline, formats, and packer notes.
-├── scripts/                           # Compatibility wrappers and historical script entry points.
-│   ├── build-mi1-talkie.sh            # Legacy MI1 shell build entry point.
-│   ├── build-mi2-talkie.sh            # Legacy MI2 shell build entry point.
-│   ├── build-monster.py               # Legacy wrapper for speech archive generation.
-│   ├── extract-xwb.py                 # Legacy wrapper for XWB extraction.
-│   ├── inject-mi1-sbl.py              # Legacy wrapper for MI1 SBL injection.
-│   ├── process-mi1-music.sh           # Legacy MI1 music conversion script.
-│   ├── process-mi1-sbl.sh             # Legacy MI1 SBL processing script.
-│   ├── process-mi1-voices.sh          # Legacy MI1 voice processing script.
-│   ├── process-mi2-voices.sh          # Legacy MI2 voice processing script.
-│   └── wav2sbl.py                     # Legacy wrapper for WAV-to-SBL conversion.
 ├── scummkit/                          # Preferred Python package and CLI implementation.
 │   ├── __init__.py                    # Package marker and version-adjacent metadata location.
 │   ├── __main__.py                    # Enables `python3 -m scummkit`.
 │   ├── audio.py                       # Audio conversion helpers and external encoder checks.
-│   ├── cli.py                         # argparse command tree for build and inspect commands.
+│   ├── cli.py                         # Top-level argparse parser and dispatch.
+│   ├── commands/                      # Command-specific parser registration and handlers.
 │   ├── mi1.py                         # MI1 build orchestration.
 │   ├── mi1_resources.py               # MI1 SCUMM resource parsing and inspection helpers.
 │   ├── mi1_sbl.py                     # MI1 SBL injection implementation.
 │   ├── mi2.py                         # MI2 build orchestration.
+│   ├── music.py                       # MI1 cdaudio.bat-compatible music processing.
 │   ├── monster.py                     # ScummVM speech archive packer and verifier.
 │   ├── paths.py                       # Shared path resolution and validation helpers.
 │   ├── runner.py                      # Subprocess, verbose, and dry-run execution helpers.
 │   ├── sbl.py                         # WAV-to-SBL conversion logic.
+│   ├── voices.py                      # MI1/MI2 voice.bat-compatible voice processing.
 │   └── xwb.py                         # XACT wave bank parser and extractor.
 ├── tests/                             # pytest suite for the Python package.
 │   ├── test_cli.py                    # CLI parsing and dry-run behavior tests.

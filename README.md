@@ -40,10 +40,10 @@ resource-building workflows around classic LucasArts SCUMM games.
   `scummpacker.exe` SBL injection flow
 - Native MI1 music conversion using `vgmstream-cli` and SoX
 - Native MI1 SBL sound-effect injection
-- Python CLI: `python3 -m scummkit`
+- Python CLI: `python3 -m scummkit` and installed `scummkit`
 - Automated pytest coverage for CLI parsing, monster archive packing, XWB
   parsing, and SBL generation
-- Compatibility shell scripts retained under `scripts/`
+- Fully Python-driven build pipeline; no shell scripts are required
 
 ## Legal Notes
 
@@ -84,6 +84,20 @@ python3 -m scummkit build mi2 \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
   --audio ogg \
   --verbose
+```
+
+Installed console script form:
+
+```bash
+scummkit build mi1 --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
+  --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
+  --audio ogg --music hybrid
+
+scummkit build mi2 --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg
 ```
 
 Add the generated output folder to ScummVM, not the original Special Edition
@@ -485,8 +499,8 @@ without Wine, Windows batch files, or opaque Windows-only executables.
   archive paths beyond stripping leading `/` characters.
 - Windows use is expected to work best through WSL or a Unix-like environment
   with the required tools on `PATH`.
-- The shell scripts remain for compatibility, but new orchestration should use
-  `python3 -m scummkit`.
+- The retained shell scripts are documented in `docs/scripts-audit.md`. New
+  orchestration should use `python3 -m scummkit`.
 
 ## Troubleshooting
 

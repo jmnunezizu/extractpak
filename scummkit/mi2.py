@@ -4,9 +4,9 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import monster, xwb
+from . import monster, voices, xwb
 from .audio import count_files, require_audio_tools
-from .paths import EXTRACTPAK, REPO_ROOT
+from .paths import EXTRACTPAK
 from .runner import BuildError, Runner, require_dir, require_file
 
 
@@ -86,26 +86,16 @@ def build(options: BuildOptions) -> None:
     xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
     xwb.extract_entries(audio_dir / "Patch.xwb", patch_wav, patch_bank, verbose=options.verbose)
 
-    # The voice processor remains available as a compatibility step while the
-    # detailed SoX command table is migrated into importable Python helpers.
-    process_script = REPO_ROOT / "scripts/process-mi2-voices.sh"
-    require_file(process_script)
-    command = [
-        process_script,
-        "--builder",
-        builder,
-        "--speech-wav",
-        speech_wav,
-        "--patch-wav",
-        patch_wav,
-        "--out",
-        processed,
-        "--audio",
-        options.audio,
-    ]
-    if options.verbose:
-        command.append("--verbose")
-    runner.run(command)
+    voices.process_mi2_voices(
+        voices.Mi2VoiceOptions(
+            builder=builder,
+            speech_wav=speech_wav,
+            patch_wav=patch_wav,
+            out=processed,
+            audio=options.audio,
+            verbose=options.verbose,
+        )
+    )
 
     if options.audio == "raw":
         raise BuildError("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
