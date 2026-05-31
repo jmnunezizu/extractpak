@@ -139,8 +139,8 @@ The special-case SoX pipeline includes:
 
 Native status:
 
-- `scripts/extract-xwb.py` can extract the PCM/ADPCM entries directly as WAV.
-- For MI1, `scripts/extract-xwb.py --decode-wma` wraps XACT WMA payloads as RIFF/XWMA and decodes them with `ffmpeg`.
+- `scummkit.xwb` can extract the PCM/ADPCM entries directly as WAV.
+- For MI1, `python3 -m scummkit xwb --decode-wma` wraps XACT WMA payloads as RIFF/XWMA and decodes them with `ffmpeg`.
 - `Speech.xwb` is fully PCM and extractable.
 - `SFXNew.xwb` is mostly PCM but contains 55 WMA entries.
 - 18 of those WMA entries are referenced by `monster.tbl`, so they are needed for a complete speech archive:
@@ -162,7 +162,7 @@ Native status:
   - `83_Chef-cry_01`
   - `83_Chef-cry_02`
   - `83_Chef-cry_04`
-- `scripts/process-mi1-voices.sh` ports the `voice.bat` SoX trim/mix/gain/compand/delay steps listed above.
+- `scummkit.voices` ports the `voice.bat` SoX trim/mix/gain/compand/delay steps listed above.
 - The native Ogg build encodes processed samples into `.work/processed-voice/final-ogg/`.
 
 ### 2. Classic Resource Extraction and Patching
@@ -298,7 +298,7 @@ Parsed `sbl.bat` commands:
 - It writes an `SBL ` chunk containing:
   - `AUhd`, payload size `3`, bytes `00 00 80`
   - `AUdt`, payload size `data_size + 7`, bytes `01`, a 24-bit `data_size + 2`, bytes `d2 00`, the raw 8-bit mono PCM data, and a trailing `00`
-- `scripts/wav2sbl.py` implements this format natively for validated PCM WAV input. It intentionally validates the WAV format instead of accepting arbitrary files with the same loose assumptions as the Windows tool.
+- `scummkit.sbl` implements this format natively for validated PCM WAV input. It intentionally validates the WAV format instead of accepting arbitrary files with the same loose assumptions as the Windows tool.
 
 `scummpacker.exe` findings:
 
@@ -312,8 +312,8 @@ Parsed `sbl.bat` commands:
 
 Native status:
 
-- `scripts/process-mi1-sbl.sh` validates the builder files, requires `sox`, preserves pre-SBL copies under `.work/sbl/pre-sbl/`, and runs native SBL injection.
-- `scripts/inject-mi1-sbl.py` parses `sbl.bat`, runs the same SoX conversions, creates SBL chunks through `scripts/wav2sbl.py`, injects 71 resources, updates resource offsets, verifies the rebuilt resource structure, and prints SHA256 values for pre/post `monkey.000` and `monkey.001`.
+- `python3 -m scummkit inject mi1 sbl` validates the builder files, requires `sox`, preserves pre-SBL copies under `.work/sbl/pre-sbl/`, and runs native SBL injection.
+- `scummkit.mi1_sbl` parses `sbl.bat`, runs the same SoX conversions, creates SBL chunks through `scummkit.sbl`, injects 71 resources, updates resource offsets, verifies the rebuilt resource structure, and prints SHA256 values for pre/post `monkey.000` and `monkey.001`.
 - This is the main difference from the MI2 pipeline. MI2 only patches `monkey2.000` / `monkey2.001`; MI1 also injects sound effects into the SCUMM resource tree.
 
 ### 4. Speech Archive Generation
@@ -346,7 +346,7 @@ Output names:
 00009a84GUY_1_beach_3_1
 ```
 
-The native `scripts/build-monster.py` likely applies to MI1 compressed modes as well because the table format and ScummVM compressed speech archive format match MI2. It has not yet been wired for MI1 because MI1 voice processing has not been ported.
+The native `scummkit.monster` packer applies to MI1 compressed modes as well because the table format and ScummVM compressed speech archive format match MI2.
 
 ### 5. CD and Special Edition Music
 
@@ -367,14 +367,14 @@ Special Edition music/ambience:
 
 Native status:
 
-- `scripts/process-mi1-music.sh` decodes `MusicOriginal.xwb`,
+- `scummkit.music` decodes `MusicOriginal.xwb`,
   `MusicNew.xwb`, and `Ambience.xwb` with `vgmstream-cli`.
-- Earlier native builds used `scripts/extract-xwb.py --decode-wma`, which
+- Earlier native builds used `python3 -m scummkit xwb --decode-wma`, which
   wrapped XACT WMA payloads as RIFF/XWMA and decoded them with `ffmpeg`. That
   produced structurally valid but audibly corrupt music for MI1 because the
   wrapper did not reproduce the Windows `unxwb.exe` plus `xWMAEncode` decode
   path correctly for these music banks.
-- `scripts/process-mi1-music.sh` ports the Ogg path from `cdaudio.bat`.
+- `scummkit.music` ports the Ogg path from `cdaudio.bat`.
 - Classic CD output: `cd_music_ogg/track1.ogg` through `track24.ogg`, with `track10.ogg` intentionally absent to match the batch remapping.
 - Special Edition output: `se_music_ogg/track1.ogg` through `track29.ogg`, plus `se_music_ogg/track8_no_sfx.ogg`.
 - The Python CLI supports `--music cd|hybrid|se` for root `track*.ogg`
@@ -547,19 +547,19 @@ Differences:
 
 ## Native Implementation Status
 
-Implemented in `scripts/build-mi1-talkie.sh`:
+Implemented in `python3 -m scummkit build mi1` and `scummkit build mi1`:
 
 - validates inputs.
 - creates a clean output directory.
 - uses existing `extractpak` to extract `classic/en`.
 - applies `patch10.000` / `patch10.001` with native `bspatch`.
-- uses existing `scripts/extract-xwb.py` to extract:
+- uses `scummkit.xwb` to extract:
   - `Speech.xwb` into `.work/speech-wav/`
   - `SFXNew.xwb` into `.work/sfxnew-wav/`, including WMA entries through `ffmpeg`
-- uses `scripts/process-mi1-voices.sh` to apply `voice.bat` sample processing and encode Ogg samples.
-- uses `scripts/build-monster.py` to build `monkey.sog`.
-- uses `scripts/process-mi1-sbl.sh` to inject the SBL sound effects natively.
-- uses `scripts/process-mi1-music.sh` to convert CD and Special Edition music to Ogg.
+- uses `scummkit.voices` to apply `voice.bat` sample processing and encode Ogg samples.
+- uses `scummkit.monster` to build `monkey.sog`.
+- uses `scummkit.mi1_sbl` to inject the SBL sound effects natively.
+- uses `scummkit.music` to convert CD and Special Edition music to Ogg.
 - copies the builder readme.
 - supports `--dry-run` and `--verbose`.
 - supports `--skip-sbl` and `--skip-music`.
@@ -570,7 +570,7 @@ Observed native Ogg validation:
 - extracted `302` WAV files from `SFXNew.xwb`.
 - processed `4894` Ogg files.
 - `monster.tbl` references: `4393`.
-- `build-monster.py` packed `4393` referenced samples.
+- `scummkit.monster` packed `4393` referenced samples.
 - missing referenced samples: `0`.
 - unreferenced processed samples: `501`.
 - generated `monkey.sog` size: `100384453` bytes.

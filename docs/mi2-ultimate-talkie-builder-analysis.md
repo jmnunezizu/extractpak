@@ -213,7 +213,7 @@ The selected output mode then converts `samples\*.wav`:
 - `ogg.bat`: `sox` to Ogg Vorbis, then `build_monster ogg`.
 - `mp3.bat`: `sox` to MP3, then `build_monster mp3`.
 
-The native `scripts/process-mi2-voices.sh` now reproduces the `voice.bat` sample
+The native `scummkit.voices` module now reproduces the `voice.bat` sample
 normalisation, the special-case SoX commands above, and the selected sample
 conversion step. It writes processed files under:
 
@@ -313,7 +313,7 @@ the tag count from the compressed archive entry.
 
 Native status:
 
-- `scripts/build-monster.py` implements deterministic `.sog`, `.sof`, and
+- `scummkit.monster` implements deterministic `.sog`, `.sof`, and
   `.so3` packing from `monster.tbl` plus processed samples.
 - It packs only referenced samples, warns for missing referenced samples, warns
   for unreferenced sample files, and validates archive offsets.
@@ -397,9 +397,9 @@ Still Windows-only in the original builder:
 
 - `MI2_ResExtract.exe`: replaced for classic file extraction by this repo's
   existing `extractpak`.
-- `unxwb.exe`: replaced by `scripts/extract-xwb.py` for these XACT wave banks.
+- `unxwb.exe`: replaced by `scummkit.xwb` for these XACT wave banks.
 - `voice.bat`: replaced through processed sample generation by
-  `scripts/process-mi2-voices.sh`.
+  `scummkit.voices`.
 - `build_monster.exe`: packs numbered speech samples into SCUMM speech
   resources (`monster.sou`, `monkey.sof`, `monkey.sog`, `monkey.so3`). A native
   replacement is still required.
@@ -429,7 +429,7 @@ Implemented natively:
   `extractpak`.
 - Patch `monkey2.000` and `monkey2.001` with native `bspatch`.
 - Extract ADPCM WAV files from `Speech.xwb` and `Patch.xwb` with
-  `scripts/extract-xwb.py`.
+  `scummkit.xwb`.
 - Copy builder `readme.txt` into the output directory.
 
 Not yet implemented natively:

@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from . import mi1_sbl, monster, sbl, xwb
+from . import mi1_sbl, monster, music as mi1_music, sbl, voices, xwb
 from .audio import count_files, require_audio_tools
 from .mi2 import archive_name
-from .paths import EXTRACTPAK, REPO_ROOT
+from .paths import EXTRACTPAK
 from .runner import BuildError, Runner, require_dir, require_file
 
 
@@ -238,24 +238,16 @@ def build(options: BuildOptions) -> None:
     xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
     xwb.extract_entries(audio_dir / "SFXNew.xwb", sfx_wav, sfx_bank, verbose=options.verbose, decode_wma=True)
 
-    process_voices = REPO_ROOT / "scripts/process-mi1-voices.sh"
-    require_file(process_voices)
-    voice_cmd = [
-        process_voices,
-        "--builder",
-        builder,
-        "--speech-wav",
-        speech_wav,
-        "--sfx-wav",
-        sfx_wav,
-        "--out",
-        processed,
-        "--audio",
-        options.audio,
-    ]
-    if options.verbose:
-        voice_cmd.append("--verbose")
-    runner.run(voice_cmd)
+    voices.process_mi1_voices(
+        voices.Mi1VoiceOptions(
+            builder=builder,
+            speech_wav=speech_wav,
+            sfx_wav=sfx_wav,
+            out=processed,
+            audio=options.audio,
+            verbose=options.verbose,
+        )
+    )
 
     monster.build_monster_archive(
         tools / "monster.tbl",
@@ -280,12 +272,15 @@ def build(options: BuildOptions) -> None:
             raise BuildError(str(error)) from error
 
     if not options.skip_music:
-        process_music = REPO_ROOT / "scripts/process-mi1-music.sh"
-        require_file(process_music)
-        music_cmd = [process_music, "--audio-dir", audio_dir, "--out", out, "--work", music_work, "--audio", options.audio]
-        if options.verbose:
-            music_cmd.append("--verbose")
-        runner.run(music_cmd)
+        mi1_music.process_mi1_music(
+            mi1_music.Mi1MusicOptions(
+                audio_dir=audio_dir,
+                out=out,
+                work=music_work,
+                audio=options.audio,
+                verbose=options.verbose,
+            )
+        )
         copied = _copy_default_music_to_root(out, options.audio, options.music, options.verbose)
         runner.log(
             f"Default root music tracks: {copied} files "
