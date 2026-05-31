@@ -1,7 +1,7 @@
 from pathlib import Path
 import wave
 
-from talkiebuilder import sbl
+from scummkit import sbl
 
 
 def test_wav_to_sbl_bytes(tmp_path: Path) -> None:

@@ -1,3 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scummkit"
+version = "1.0.0"
+description = "Native toolkit for building, inspecting and modifying classic LucasArts SCUMM game resources."
+requires-python = ">=3.9"
+
+[project.scripts]
+scummkit = "scummkit.cli:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

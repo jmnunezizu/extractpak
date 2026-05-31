@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from talkiebuilder import monster
+from scummkit import monster
 
 
 def test_parse_monster_table(tmp_path: Path) -> None:

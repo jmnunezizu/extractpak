@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from talkiebuilder import cli
-from talkiebuilder.runner import Runner
+from scummkit import cli
+from scummkit.runner import Runner
 
 
 def test_cli_argument_parsing() -> None:
@@ -78,7 +78,7 @@ def test_cli_inspect_argument_parsing() -> None:
 
 
 def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -> None:
-    from talkiebuilder import mi2
+    from scummkit import mi2
 
     pak = tmp_path / "app" / "monkey2.pak"
     builder = tmp_path / "builder"
@@ -116,7 +116,7 @@ def _write_music_fixture(out: Path) -> None:
 
 
 def test_mi1_hybrid_root_music_uses_cd_plus_extended_se(tmp_path: Path) -> None:
-    from talkiebuilder import mi1
+    from scummkit import mi1
 
     out = tmp_path / "out"
     _write_music_fixture(out)
@@ -134,7 +134,7 @@ def test_mi1_hybrid_root_music_uses_cd_plus_extended_se(tmp_path: Path) -> None:
 
 
 def test_mi1_cd_root_music_only_uses_cd_tracks(tmp_path: Path) -> None:
-    from talkiebuilder import mi1
+    from scummkit import mi1
 
     out = tmp_path / "out"
     _write_music_fixture(out)
@@ -149,7 +149,7 @@ def test_mi1_cd_root_music_only_uses_cd_tracks(tmp_path: Path) -> None:
 
 
 def test_mi1_se_root_music_only_uses_se_tracks(tmp_path: Path) -> None:
-    from talkiebuilder import mi1
+    from scummkit import mi1
 
     out = tmp_path / "out"
     _write_music_fixture(out)

@@ -13,7 +13,7 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
   folders as local inputs only.
 - Keep MI1 and MI2 behavior separate. Do not refactor MI2 while working on MI1
   unless the change is clearly shared infrastructure and is covered by tests.
-- Prefer Python package code under `talkiebuilder/` for new orchestration.
+- Prefer Python package code under `scummkit/` for new orchestration.
   Existing shell scripts under `scripts/` are compatibility wrappers and
   historical references.
 - Use `pathlib`, `argparse`, `dataclasses`, `subprocess`, and `struct` in
@@ -34,7 +34,7 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
 Run the lightweight checks after code changes:
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile talkiebuilder/*.py
+PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile scummkit/*.py
 python3 -m pytest
 ```
 
@@ -47,7 +47,7 @@ clang extractpak.c -o extractpak
 Useful real-build smoke commands when local assets are available:
 
 ```bash
-python3 -m talkiebuilder build mi1 \
+python3 -m scummkit build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out /tmp/mi1-talkie-test \
@@ -55,7 +55,7 @@ python3 -m talkiebuilder build mi1 \
   --music hybrid \
   --verbose
 
-python3 -m talkiebuilder build mi2 \
+python3 -m scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
   --out /tmp/mi2-talkie-test \
@@ -81,9 +81,9 @@ python3 -m talkiebuilder build mi2 \
 │   ├── process-mi1-voices.sh          # Legacy MI1 voice processing script.
 │   ├── process-mi2-voices.sh          # Legacy MI2 voice processing script.
 │   └── wav2sbl.py                     # Legacy wrapper for WAV-to-SBL conversion.
-├── talkiebuilder/                     # Preferred Python package and CLI implementation.
+├── scummkit/                          # Preferred Python package and CLI implementation.
 │   ├── __init__.py                    # Package marker and version-adjacent metadata location.
-│   ├── __main__.py                    # Enables `python3 -m talkiebuilder`.
+│   ├── __main__.py                    # Enables `python3 -m scummkit`.
 │   ├── audio.py                       # Audio conversion helpers and external encoder checks.
 │   ├── cli.py                         # argparse command tree for build and inspect commands.
 │   ├── mi1.py                         # MI1 build orchestration.
@@ -127,7 +127,7 @@ Extract only classic SCUMM resources:
 Inspect generated MI1 resources:
 
 ```bash
-python3 -m talkiebuilder inspect mi1 resources --game-dir /tmp/mi1-talkie-test
-python3 -m talkiebuilder inspect mi1 room --game-dir /tmp/mi1-talkie-test --room 41
-python3 -m talkiebuilder inspect mi1 resource --game-dir /tmp/mi1-talkie-test --room 41 --id 71
+python3 -m scummkit inspect mi1 resources --game-dir /tmp/mi1-talkie-test
+python3 -m scummkit inspect mi1 room --game-dir /tmp/mi1-talkie-test --room 41
+python3 -m scummkit inspect mi1 resource --game-dir /tmp/mi1-talkie-test --room 41 --id 71
 ```
