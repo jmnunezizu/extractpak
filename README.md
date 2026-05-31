@@ -17,11 +17,8 @@ native command line tools and a Python CLI.
 
 Supported games:
 
-- The Secret of Monkey Island: Special Edition
-- Monkey Island 2 Special Edition: LeChuck's Revenge
-
-The original `extractpak` utility is still included for inspecting and
-extracting Special Edition `.pak` archives directly.
+- [The Secret of Monkey Island: Special Edition](https://www.gog.com/en/game/the_secret_of_monkey_island_special_edition)
+- [Monkey Island 2 Special Edition: LeChuck's Revenge](https://www.gog.com/en/game/monkey_island_2_special_edition_lechucks_revenge)
 
 ## Why SCUMMKit?
 
@@ -46,22 +43,6 @@ resource-building workflows around classic LucasArts SCUMM games.
 - Automated pytest coverage for CLI parsing, monster archive packing, XWB
   parsing, and SBL generation
 - Fully Python-driven build pipeline; no shell scripts are required
-
-## Legal Notes
-
-This project does not include, distribute, or generate copyrighted game assets
-by itself.
-
-You must provide:
-
-- Your own legally owned copies of the Monkey Island Special Edition games.
-- The `.pak` and `audio/` files extracted from those games.
-- The original Ultimate Talkie Edition builder files for the game you want to
-  build.
-
-SCUMMKit only automates the local build process. The generated output
-folder contains LucasArts/Disney game assets derived from your installation and
-must not be redistributed.
 
 ## Quick Start
 
@@ -92,20 +73,6 @@ python3 -m scummkit build mi2 \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
   --audio ogg \
   --verbose
-```
-
-Installed console script form:
-
-```bash
-scummkit build mi1 --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
-  --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
-  --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
-  --audio ogg --music hybrid
-
-scummkit build mi2 --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
-  --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
-  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg
 ```
 
 Add the generated output folder to ScummVM, not the original Special Edition
@@ -210,7 +177,7 @@ Extract The Secret of Monkey Island: Special Edition:
 innoextract -d MonkeyIsland setup_the_secret_of_monkey_islandtm_special_edition_1.0_\(18587\).exe
 ```
 
-Extract Monkey Island 2 Special Edition:
+Extract Monkey Island™ 2 Special Edition: LeChuck’s Revenge:
 
 ```bash
 innoextract -d MonkeyIsland2 setup_monkey_island2_se_2.0.0.10.exe
@@ -229,11 +196,11 @@ MonkeyIsland2/app/audio/
 
 | Area                               | Support level           | Notes                                                                                                                                                                                                     |
 | ---------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Secret of Monkey Island        | Complete, Ogg validated | Speech archive generation, music conversion, SBL injection, ambience, and root soundtrack selection. FLAC/MP3/raw are not currently validated for the MI1 build pipeline.                                |
-| Monkey Island 2: LeChuck's Revenge | Complete, Ogg validated | Speech archive generation and patched ScummVM output. FLAC/MP3 use the same compressed archive path when encoders are available. Raw `monster.sou` generation is not implemented.                       |
+| The Secret of Monkey Island        | Complete, Ogg validated | Speech archive generation, music conversion, SBL injection, ambience, and root soundtrack selection. FLAC/MP3/raw are not currently validated for the MI1 build pipeline.                                 |
+| Monkey Island 2: LeChuck's Revenge | Complete, Ogg validated | Speech archive generation and patched ScummVM output. FLAC/MP3 use the same compressed archive path when encoders are available. Raw `monster.sou` generation is not implemented.                         |
 | MI1 music modes                    | `cd`, `hybrid`, `se`    | `hybrid` is the default. `cd` uses classic CD root tracks. `se` uses the full Special Edition root soundtrack.                                                                                            |
 | Build output mode                  | normal, quiet, verbose  | Normal mode prints stage and summary output. `--quiet` suppresses external-tool chatter and shows a stage progress bar plus known item counts. `--verbose` prints detailed command and file-level output. |
-| Doctor output                      | text, JSON              | `scummkit doctor` prints human-readable checks. `scummkit doctor --json` emits machine-readable check status and details.                                                                                |
+| Doctor output                      | text, JSON              | `scummkit doctor` prints human-readable checks. `scummkit doctor --json` emits machine-readable check status and details.                                                                                 |
 
 ## Building Monkey Island 1
 
@@ -612,6 +579,22 @@ record the behavior currently implemented.
 - The original `extractpak.c` work in
   [timfel/monkey](https://github.com/timfel/monkey), which this repository
   builds on.
+
+## Legal Notes
+
+This project does not include, distribute, or generate copyrighted game assets
+by itself.
+
+You must provide:
+
+- Your own legally owned copies of the Monkey Island Special Edition games.
+- The `.pak` and `audio/` files extracted from those games.
+- The original Ultimate Talkie Edition builder files for the game you want to
+  build.
+
+SCUMMKit only automates the local build process. The generated output
+folder contains LucasArts/Disney game assets derived from your installation and
+must not be redistributed.
 
 ## Origin, Notice, and License
 
