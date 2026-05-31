@@ -1,3 +1,5 @@
+<img src="images/scummkit-logo-web.png" alt="SCUMMKit logo" width="520">
+
 # SCUMMKit
 
 Native toolkit for building, inspecting and modifying classic LucasArts SCUMM
@@ -62,6 +64,12 @@ folder contains LucasArts/Disney game assets derived from your installation and
 must not be redistributed.
 
 ## Quick Start
+
+Check your local tools and Python package first:
+
+```bash
+python3 -m scummkit doctor --out /tmp/scummkit-test
+```
 
 Build Monkey Island 1:
 
@@ -139,16 +147,24 @@ installation folder.
    clang extractpak.c -o extractpak
    ```
 
-4. Verify the Python package:
+4. Verify the SCUMMKit environment:
 
    ```bash
-   python3 -m py_compile scummkit/*.py
+   python3 -m scummkit doctor --out /tmp/scummkit-test
+   ```
+
+5. Verify the Python package:
+
+   ```bash
+   PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
    python3 -m pytest
    ```
 
 ### Tool Requirements
 
 - Python 3.9 or newer: runs the `scummkit` package and tests.
+- `extractpak`: local compiled helper for extracting `classic/en` resources
+  from Monkey Island Special Edition PAK files.
 - `bspatch`: applies the Ultimate Talkie binary patch files.
 - `ffmpeg`: decodes WMA/XWMA sound-effect entries where needed.
 - `sox`: performs the trim, mix, gain, pad, and audio conversion operations
@@ -161,6 +177,21 @@ Audio encoder support:
 - Ogg Vorbis: SoX with Ogg support, `oggenc`, or `ffmpeg`.
 - FLAC: `flac` or `ffmpeg`.
 - MP3: `lame` or `ffmpeg`.
+
+### Doctor Command
+
+`scummkit doctor` checks the assumptions that the native build pipeline relies
+on before you start a long build:
+
+```bash
+python3 -m scummkit doctor
+python3 -m scummkit doctor --out /tmp/scummkit-test
+```
+
+It verifies the Python version, required external tools (`ffmpeg`, `sox`,
+`vgmstream-cli`, and the local `extractpak` helper), package import health, and
+optionally whether an output directory can be written. It exits with status `0`
+when all required checks pass and non-zero when any required check fails.
 
 ## Extracting GOG Installers
 
@@ -194,9 +225,9 @@ MonkeyIsland2/app/audio/
 
 ## Supported Games
 
-| Game | Status | Notes |
-| --- | --- | --- |
-| The Secret of Monkey Island | Complete | Speech, music, SBL, ambience, and root soundtrack selection. Ogg is the validated native output mode. |
+| Game                               | Status   | Notes                                                                                                                                                                                                     |
+| ---------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The Secret of Monkey Island        | Complete | Speech, music, SBL, ambience, and root soundtrack selection. Ogg is the validated native output mode.                                                                                                     |
 | Monkey Island 2: LeChuck's Revenge | Complete | Speech and music/resource support through the patched ScummVM game output. Ogg is the primary validated speech archive output; FLAC/MP3 use the same compressed archive path when encoders are available. |
 
 ## Building Monkey Island 1
@@ -466,6 +497,7 @@ and packs the ScummVM speech archive.
 Run:
 
 ```bash
+PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
 python3 -m pytest
 ```
 
@@ -476,7 +508,7 @@ behavior, and SBL conversion with generated WAV data.
 For syntax-only validation:
 
 ```bash
-python3 -m py_compile scummkit/*.py
+PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
 ```
 
 ## Project History
@@ -499,8 +531,8 @@ without Wine, Windows batch files, or opaque Windows-only executables.
   archive paths beyond stripping leading `/` characters.
 - Windows use is expected to work best through WSL or a Unix-like environment
   with the required tools on `PATH`.
-- The retained shell scripts are documented in `docs/scripts-audit.md`. New
-  orchestration should use `python3 -m scummkit`.
+- The build pipeline is fully Python-driven. No shell scripts are required for
+  orchestration.
 
 ## Troubleshooting
 

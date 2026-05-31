@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from . import monster, voices, xwb
 from .audio import count_files, require_audio_tools
 from .paths import EXTRACTPAK
 from .runner import BuildError, Runner, require_dir, require_file
+from .summary import BuildSummary, print_build_summary
 
 
 @dataclass
@@ -21,10 +23,14 @@ class BuildOptions:
 
 
 def archive_name(audio: str) -> str:
-    return {"ogg": "monkey2.sog", "flac": "monkey2.sof", "mp3": "monkey2.so3", "raw": "monster.sou"}[audio]
+    try:
+        return {"ogg": "monkey2.sog", "flac": "monkey2.sof", "mp3": "monkey2.so3", "raw": "monster.sou"}[audio]
+    except KeyError as error:
+        raise BuildError("unsupported MI2 audio format: use --audio ogg, flac, mp3, or raw") from error
 
 
 def build(options: BuildOptions) -> None:
+    started = time.monotonic()
     runner = Runner(options.dry_run, options.verbose)
     pak = options.pak.expanduser()
     builder = options.builder.expanduser()
@@ -37,16 +43,16 @@ def build(options: BuildOptions) -> None:
     patch_wav = work / "patch-wav"
     processed = work / "processed-voice"
 
-    require_file(pak)
-    require_dir(builder)
-    require_dir(tools)
-    require_file(builder / "readme.txt")
-    require_file(tools / "patch02.000")
-    require_file(tools / "patch02.001")
-    require_file(tools / "monster.tbl")
-    require_file(audio_dir / "Speech.xwb")
-    require_file(audio_dir / "Patch.xwb")
-    require_file(EXTRACTPAK)
+    require_file(pak, "MI2 PAK file")
+    require_dir(builder, "MI2 Ultimate Talkie builder directory")
+    require_dir(tools, "MI2 builder tools directory")
+    require_file(builder / "readme.txt", "MI2 builder readme")
+    require_file(tools / "patch02.000", "MI2 patch file")
+    require_file(tools / "patch02.001", "MI2 patch file")
+    require_file(tools / "monster.tbl", "MI2 monster table")
+    require_file(audio_dir / "Speech.xwb", "MI2 Special Edition Speech.xwb")
+    require_file(audio_dir / "Patch.xwb", "MI2 Special Edition Patch.xwb")
+    require_file(EXTRACTPAK, "compiled extractpak helper")
     runner.require_tool("bspatch", "install bsdiff/bspatch; macOS usually provides /usr/bin/bspatch")
     require_audio_tools(runner, options.audio)
 
@@ -71,21 +77,28 @@ def build(options: BuildOptions) -> None:
 
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
+    runner.log("[1/5] Extracting PAK assets...")
     runner.run([EXTRACTPAK, "--only", "classic/en", pak, extracted])
     src000 = extracted / "classic/en/monkey2.000"
     src001 = extracted / "classic/en/monkey2.001"
-    require_file(src000)
-    require_file(src001)
+    require_file(src000, "extracted MI2 classic resource")
+    require_file(src001, "extracted MI2 classic resource")
+    runner.log("[2/5] Applying Ultimate Talkie patches...")
     runner.run(["bspatch", src000, out / "monkey2.000", tools / "patch02.000"])
     runner.run(["bspatch", src001, out / "monkey2.001", tools / "patch02.001"])
 
     speech_wav.mkdir(parents=True, exist_ok=True)
     patch_wav.mkdir(parents=True, exist_ok=True)
-    speech_bank = xwb.parse_xwb(audio_dir / "Speech.xwb")
-    patch_bank = xwb.parse_xwb(audio_dir / "Patch.xwb")
-    xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
-    xwb.extract_entries(audio_dir / "Patch.xwb", patch_wav, patch_bank, verbose=options.verbose)
+    runner.log("[3/5] Extracting XWB audio banks...")
+    try:
+        speech_bank = xwb.parse_xwb(audio_dir / "Speech.xwb")
+        patch_bank = xwb.parse_xwb(audio_dir / "Patch.xwb")
+        xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
+        xwb.extract_entries(audio_dir / "Patch.xwb", patch_wav, patch_bank, verbose=options.verbose)
+    except xwb.XwbError as error:
+        raise BuildError(f"failed to extract MI2 Special Edition XWB audio: {error}") from error
 
+    runner.log("[4/5] Extracting and encoding voices...")
     voices.process_mi2_voices(
         voices.Mi2VoiceOptions(
             builder=builder,
@@ -99,21 +112,28 @@ def build(options: BuildOptions) -> None:
 
     if options.audio == "raw":
         raise BuildError("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
-    monster.build_monster_archive(
-        tools / "monster.tbl",
-        processed / f"final-{options.audio}",
-        out / archive_name(options.audio),
-        options.audio,
-        verbose=options.verbose,
-    )
+    archive = out / archive_name(options.audio)
+    runner.log("[5/5] Building speech archive...")
+    try:
+        monster_summary = monster.build_monster_archive(
+            tools / "monster.tbl",
+            processed / f"final-{options.audio}",
+            archive,
+            options.audio,
+            verbose=options.verbose,
+        )
+    except monster.MonsterError as error:
+        raise BuildError(f"failed to build MI2 speech archive: {error}") from error
     shutil.copy2(builder / "readme.txt", out / "readme.txt")
 
-    runner.log("")
-    runner.log("Native experimental build complete.")
-    runner.log("Generated:")
-    runner.log(f"  {out / 'monkey2.000'}")
-    runner.log(f"  {out / 'monkey2.001'}")
-    runner.log(f"  {out / archive_name(options.audio)}")
-    runner.log(f"  {out / 'readme.txt'}")
-    runner.log(f"  {speech_wav}/*.wav ({count_files(speech_wav, '*.wav')})")
-    runner.log(f"  {patch_wav}/*.wav ({count_files(patch_wav, '*.wav')})")
+    print_build_summary(
+        BuildSummary(
+            game="Monkey Island 2: LeChuck's Revenge",
+            out=out,
+            generated_files=[out / "monkey2.000", out / "monkey2.001", archive, out / "readme.txt"],
+            speech_archive_entries=monster_summary.packed,
+            missing_samples=monster_summary.missing,
+            audio=options.audio,
+            elapsed_seconds=time.monotonic() - started,
+        )
+    )

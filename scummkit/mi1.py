@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -11,6 +12,7 @@ from .audio import count_files, require_audio_tools
 from .mi2 import archive_name
 from .paths import EXTRACTPAK
 from .runner import BuildError, Runner, require_dir, require_file
+from .summary import BuildSummary, print_build_summary
 
 
 @dataclass
@@ -168,9 +170,12 @@ def _print_audio_diagnostics(out: Path, audio: str, music: str, injected: list[d
 
 
 def build(options: BuildOptions) -> None:
+    started = time.monotonic()
     runner = Runner(options.dry_run, options.verbose)
     if options.audio != "ogg":
-        raise BuildError("MI1 native build currently supports --audio ogg only")
+        raise BuildError("unsupported MI1 audio format: use --audio ogg; FLAC/MP3/raw are not validated for MI1 yet")
+    if options.music not in ("cd", "hybrid", "se"):
+        raise BuildError("unsupported MI1 music mode: use --music cd, --music hybrid, or --music se")
 
     pak = options.pak.expanduser()
     builder = options.builder.expanduser()
@@ -185,16 +190,16 @@ def build(options: BuildOptions) -> None:
     sbl_work = work / "sbl"
     music_work = work / "music"
 
-    require_file(pak)
-    require_dir(builder)
-    require_dir(tools)
-    require_file(builder / "readme.txt")
-    require_file(tools / "patch10.000")
-    require_file(tools / "patch10.001")
-    require_file(tools / "monster.tbl")
-    require_file(audio_dir / "Speech.xwb")
-    require_file(audio_dir / "SFXNew.xwb")
-    require_file(EXTRACTPAK)
+    require_file(pak, "MI1 PAK file")
+    require_dir(builder, "MI1 Ultimate Talkie builder directory")
+    require_dir(tools, "MI1 builder tools directory")
+    require_file(builder / "readme.txt", "MI1 builder readme")
+    require_file(tools / "patch10.000", "MI1 patch file")
+    require_file(tools / "patch10.001", "MI1 patch file")
+    require_file(tools / "monster.tbl", "MI1 monster table")
+    require_file(audio_dir / "Speech.xwb", "MI1 Special Edition Speech.xwb")
+    require_file(audio_dir / "SFXNew.xwb", "MI1 Special Edition SFXNew.xwb")
+    require_file(EXTRACTPAK, "compiled extractpak helper")
     runner.require_tool("bspatch", "install bsdiff/bspatch; macOS usually provides /usr/bin/bspatch")
     runner.require_tool("ffmpeg", "install ffmpeg; it is required to decode WMA entries from SFXNew.xwb")
     if not options.skip_music:
@@ -223,21 +228,28 @@ def build(options: BuildOptions) -> None:
 
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
+    runner.log("[1/7] Extracting PAK assets...")
     runner.run([EXTRACTPAK, "--only", "classic/en", pak, extracted])
     src000 = extracted / "classic/en/monkey1.000"
     src001 = extracted / "classic/en/monkey1.001"
-    require_file(src000)
-    require_file(src001)
+    require_file(src000, "extracted MI1 classic resource")
+    require_file(src001, "extracted MI1 classic resource")
+    runner.log("[2/7] Applying Ultimate Talkie patches...")
     runner.run(["bspatch", src000, out / "monkey.000", tools / "patch10.000"])
     runner.run(["bspatch", src001, out / "monkey.001", tools / "patch10.001"])
 
     speech_wav.mkdir(parents=True, exist_ok=True)
     sfx_wav.mkdir(parents=True, exist_ok=True)
-    speech_bank = xwb.parse_xwb(audio_dir / "Speech.xwb")
-    sfx_bank = xwb.parse_xwb(audio_dir / "SFXNew.xwb")
-    xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
-    xwb.extract_entries(audio_dir / "SFXNew.xwb", sfx_wav, sfx_bank, verbose=options.verbose, decode_wma=True)
+    runner.log("[3/7] Extracting XWB audio banks...")
+    try:
+        speech_bank = xwb.parse_xwb(audio_dir / "Speech.xwb")
+        sfx_bank = xwb.parse_xwb(audio_dir / "SFXNew.xwb")
+        xwb.extract_entries(audio_dir / "Speech.xwb", speech_wav, speech_bank, verbose=options.verbose)
+        xwb.extract_entries(audio_dir / "SFXNew.xwb", sfx_wav, sfx_bank, verbose=options.verbose, decode_wma=True)
+    except xwb.XwbError as error:
+        raise BuildError(f"failed to extract MI1 Special Edition XWB audio: {error}") from error
 
+    runner.log("[4/7] Extracting and encoding voices...")
     voices.process_mi1_voices(
         voices.Mi1VoiceOptions(
             builder=builder,
@@ -249,16 +261,22 @@ def build(options: BuildOptions) -> None:
         )
     )
 
-    monster.build_monster_archive(
-        tools / "monster.tbl",
-        processed / f"final-{options.audio}",
-        out / archive_name(options.audio).replace("monkey2", "monkey"),
-        options.audio,
-        verbose=options.verbose,
-    )
+    archive = out / archive_name(options.audio).replace("monkey2", "monkey")
+    runner.log("[5/7] Building speech archive...")
+    try:
+        monster_summary = monster.build_monster_archive(
+            tools / "monster.tbl",
+            processed / f"final-{options.audio}",
+            archive,
+            options.audio,
+            verbose=options.verbose,
+        )
+    except monster.MonsterError as error:
+        raise BuildError(f"failed to build MI1 speech archive: {error}") from error
 
     injected = None
     if not options.skip_sbl:
+        runner.log("[6/7] Injecting SBL resources...")
         try:
             injected = mi1_sbl.inject_mi1_sbl(
                 builder,
@@ -270,8 +288,11 @@ def build(options: BuildOptions) -> None:
             )
         except (OSError, mi1_sbl.InjectError, sbl.SblError) as error:
             raise BuildError(str(error)) from error
+    else:
+        runner.log("[6/7] Skipping SBL resource injection.")
 
     if not options.skip_music:
+        runner.log("[7/7] Converting music...")
         mi1_music.process_mi1_music(
             mi1_music.Mi1MusicOptions(
                 audio_dir=audio_dir,
@@ -286,15 +307,23 @@ def build(options: BuildOptions) -> None:
             f"Default root music tracks: {copied} files "
             f"({_root_music_policy(options.audio, options.music)})"
         )
+    else:
+        runner.log("[7/7] Skipping music conversion.")
 
     shutil.copy2(builder / "readme.txt", out / "readme.txt")
     _print_audio_diagnostics(out, options.audio, options.music, injected)
-    runner.log("")
-    runner.log("Native MI1 experimental Ogg build complete.")
-    runner.log("Generated:")
-    for name in ("monkey.000", "monkey.001", "monkey.sog", "readme.txt"):
-        runner.log(f"  {out / name}")
-    runner.log(f"  {out / 'cd_music_ogg'}/* ({count_files(out / 'cd_music_ogg', '*.ogg')})")
-    runner.log(f"  {out / 'se_music_ogg'}/* ({count_files(out / 'se_music_ogg', '*.ogg')})")
-    runner.log(f"  {out / 'track*.ogg'} ({_count_root_files(out, '*.ogg')})")
-    runner.log(f"  {out / 'music-root-map.txt'}")
+    generated = [out / name for name in ("monkey.000", "monkey.001", archive.name, "readme.txt")]
+    if not options.skip_music:
+        generated.append(out / "music-root-map.txt")
+    print_build_summary(
+        BuildSummary(
+            game="The Secret of Monkey Island",
+            out=out,
+            generated_files=generated,
+            speech_archive_entries=monster_summary.packed,
+            missing_samples=monster_summary.missing,
+            audio=options.audio,
+            music=options.music,
+            elapsed_seconds=time.monotonic() - started,
+        )
+    )

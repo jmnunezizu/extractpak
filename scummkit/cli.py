@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from .commands import build, inspect, monster, sbl, xwb
+from .commands import build, doctor, inspect, monster, sbl, xwb
 from .runner import BuildError
 
 
@@ -10,6 +10,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="scummkit")
     sub = parser.add_subparsers(dest="command", required=True)
     build.register(sub)
+    doctor.register(sub)
     xwb.register(sub)
     monster.register(sub)
     sbl.register_wav2sbl(sub)
@@ -24,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "build":
             build.run(args)
+        elif args.command == "doctor":
+            doctor.run(args)
         elif args.command == "inspect":
             inspect.run(args)
         elif args.command == "xwb":

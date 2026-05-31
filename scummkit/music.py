@@ -106,11 +106,11 @@ def process_mi1_music(options: Mi1MusicOptions) -> None:
     work = options.work.expanduser()
     audio = options.audio
     if audio != "ogg":
-        raise BuildError("MI1 music conversion currently supports --audio ogg only")
-    require_dir(audio_dir)
-    require_file(audio_dir / "MusicOriginal.xwb")
-    require_file(audio_dir / "MusicNew.xwb")
-    require_file(audio_dir / "Ambience.xwb")
+        raise BuildError("unsupported MI1 music audio format: use --audio ogg")
+    require_dir(audio_dir, "MI1 Special Edition audio directory")
+    require_file(audio_dir / "MusicOriginal.xwb", "MI1 Special Edition MusicOriginal.xwb")
+    require_file(audio_dir / "MusicNew.xwb", "MI1 Special Edition MusicNew.xwb")
+    require_file(audio_dir / "Ambience.xwb", "MI1 Special Edition Ambience.xwb")
     runner.require_tool("sox", "install SoX to reproduce cdaudio.bat transforms")
     runner.require_tool("vgmstream-cli", "install vgmstream to decode XACT WMA music banks correctly")
     if not sox_can_write("ogg"):
@@ -132,17 +132,21 @@ def process_mi1_music(options: Mi1MusicOptions) -> None:
     for directory in (original, new, ambience, cd_out, se_out):
         directory.mkdir(parents=True, exist_ok=True)
 
+    runner.log("  decoding classic CD music bank...")
     _decode_bank(runner, audio_dir / "MusicOriginal.xwb", original, "classic CD music")
+    runner.log(f"  converting {len(CD_TRACKS)} classic CD tracks...")
     for src, dst, effects in CD_TRACKS:
         _sox_track(runner, original, src, cd_out, dst, effects, "cd music")
 
+    runner.log("  decoding Special Edition music banks...")
     _decode_bank(runner, audio_dir / "MusicNew.xwb", new, "Special Edition music")
     _decode_bank(runner, audio_dir / "Ambience.xwb", ambience, "Special Edition ambience")
+    runner.log(f"  converting {len(SE_MUSIC_TRACKS) + len(SE_AMBIENCE_TRACKS)} Special Edition tracks...")
     for src, dst, effects in SE_MUSIC_TRACKS:
         _sox_track(runner, new, src, se_out, dst, effects, "se music")
 
-    require_file(ambience / "AMB_ScummBar_01.wav")
-    require_file(new / "track9.wav")
+    require_file(ambience / "AMB_ScummBar_01.wav", "decoded SCUMM Bar ambience")
+    require_file(new / "track9.wav", "decoded Special Edition music track")
     runner.run(["sox", ambience / "AMB_ScummBar_01.wav", "-V0", work / "temp-scummbar.wav", "trim", "0.000", "89.687"])
     runner.run(["sox", work / "temp-scummbar.wav", new / "track9.wav", "-m", "-V0", work / "track9o.wav"])
     runner.run(["sox", work / "track9o.wav", "-V0", se_out / "track8.ogg"])

@@ -17,6 +17,8 @@ def be24(value):
 
 
 def read_pcm_u8_mono(path):
+    if not path.is_file():
+        raise SblError(f"missing WAV file: {path}")
     with wave.open(str(path), "rb") as wav:
         channels = wav.getnchannels()
         sample_width = wav.getsampwidth()
@@ -65,6 +67,8 @@ def wav_to_sbl_bytes(path):
 
 
 def dump_info(path):
+    if not path.is_file():
+        raise SblError(f"missing SBL file: {path}")
     data = path.read_bytes()
     if len(data) < 33 or data[:4] != b"SBL ":
         raise SblError("not an SBL file")

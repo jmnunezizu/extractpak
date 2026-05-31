@@ -113,6 +113,7 @@ def test_command_modules_register_public_commands() -> None:
 
     for argv, expected in [
         (["build", "mi2", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"], "build"),
+        (["doctor"], "doctor"),
         (["inspect", "mi1", "resources", "--game-dir", "game"], "inspect"),
         (["monster", "--verify", "monkey.sog"], "monster"),
         (["xwb", "Speech.xwb", "--list"], "xwb"),
@@ -223,6 +224,78 @@ def test_scripts_directory_contains_no_required_build_scripts() -> None:
     present = {path.name for path in scripts.iterdir() if path.is_file()}
 
     assert present.isdisjoint(required_scripts)
+
+
+def test_doctor_registration_with_out() -> None:
+    parser = cli.build_parser()
+    args = parser.parse_args(["doctor", "--out", "/tmp/scummkit-test"])
+
+    assert args.command == "doctor"
+    assert args.out == Path("/tmp/scummkit-test")
+
+
+def test_doctor_success_with_monkeypatched_tools(tmp_path: Path, monkeypatch) -> None:
+    from scummkit import doctor
+
+    extractpak = tmp_path / "extractpak"
+    extractpak.write_text("#!/bin/sh\n", encoding="utf-8")
+    extractpak.chmod(0o755)
+
+    monkeypatch.setattr(doctor, "EXTRACTPAK", extractpak)
+    monkeypatch.setattr(doctor.shutil, "which", lambda name: f"/bin/{name}")
+
+    checks = doctor.run_checks(tmp_path / "out")
+
+    assert doctor.exit_code(checks) == 0
+    assert {check.name for check in checks} >= {"python", "ffmpeg", "sox", "vgmstream-cli", "extractpak", "imports", "output"}
+
+
+def test_doctor_failure_when_required_tool_missing(tmp_path: Path, monkeypatch) -> None:
+    from scummkit import doctor
+
+    extractpak = tmp_path / "extractpak"
+    extractpak.write_text("#!/bin/sh\n", encoding="utf-8")
+    extractpak.chmod(0o755)
+
+    monkeypatch.setattr(doctor, "EXTRACTPAK", extractpak)
+    monkeypatch.setattr(doctor.shutil, "which", lambda name: None if name == "vgmstream-cli" else f"/bin/{name}")
+
+    checks = doctor.run_checks()
+
+    assert doctor.exit_code(checks) == 1
+    assert any(check.name == "vgmstream-cli" and not check.ok for check in checks)
+
+
+def test_build_summary_prints_key_fields(capsys) -> None:
+    from scummkit.summary import BuildSummary, print_build_summary
+
+    print_build_summary(
+        BuildSummary(
+            game="MI Test",
+            out=Path("/tmp/out"),
+            generated_files=[Path("/tmp/out/monkey.sog")],
+            speech_archive_entries=2,
+            missing_samples=1,
+            audio="ogg",
+            music="hybrid",
+            elapsed_seconds=1.25,
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Build summary:" in output
+    assert "game: MI Test" in output
+    assert "speech archive entries: 2" in output
+    assert "missing samples: 1" in output
+
+
+def test_require_file_error_message_is_actionable(tmp_path: Path) -> None:
+    import pytest
+
+    from scummkit.runner import BuildError, require_file
+
+    with pytest.raises(BuildError, match="missing MI1 PAK file"):
+        require_file(tmp_path / "missing.pak", "MI1 PAK file")
 
 
 def _write_music_fixture(out: Path) -> None:

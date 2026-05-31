@@ -4,6 +4,7 @@
 import argparse
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -184,6 +185,8 @@ def wav_header(entry, payload_size):
 
 
 def parse_xwb(path):
+    if not path.is_file():
+        raise XwbError(f"missing XWB file: {path}")
     with path.open("rb") as f:
         header = f.read(0x100)
     if len(header) < 0x34 or header[:4] != b"WBND":
@@ -289,6 +292,8 @@ def list_entries(bank):
 
 
 def decode_wma_payload(entry, payload, destination):
+    if shutil.which("ffmpeg") is None:
+        raise XwbError("ffmpeg is required to decode WMA/XWMA entries")
     with tempfile.TemporaryDirectory(prefix="extract-xwb-") as tmp:
         tmp_path = Path(tmp) / "entry.xwma"
         tmp_path.write_bytes(xwma_bytes(entry, payload))
@@ -356,12 +361,7 @@ def extract_entries(path, out_dir, bank, verbose=False, decode_wma=False):
                 raise XwbError(f"unexpected EOF reading entry {entry['index']:08x}")
 
             if fmt["tag"] == FORMAT_WMA:
-                if subprocess.run(
-                    ["ffmpeg", "-version"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                ).returncode != 0:
+                if shutil.which("ffmpeg") is None:
                     skipped += 1
                     print(
                         f"unsupported: {entry['index']:08x} "

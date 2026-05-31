@@ -35,6 +35,10 @@ class Runner:
             self.log("+ " + " ".join(command))
         try:
             return subprocess.run(command, check=True, **kwargs)
+        except FileNotFoundError as error:
+            raise BuildError(
+                f"command not found: {command[0]}; install it and ensure it is on PATH"
+            ) from error
         except subprocess.CalledProcessError as error:
             raise BuildError(f"command failed ({error.returncode}): {' '.join(command)}") from error
 
@@ -45,15 +49,20 @@ class Runner:
             self.log(f"[dry-run] rm -rf {path}")
             self.log(f"[dry-run] mkdir -p {path}")
             return
-        shutil.rmtree(path, ignore_errors=True)
-        path.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.rmtree(path, ignore_errors=True)
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            raise BuildError(f"cannot prepare output directory {path}: {error}") from error
 
 
-def require_file(path: Path) -> None:
+def require_file(path: Path, description: str | None = None) -> None:
     if not path.is_file():
-        raise BuildError(f"missing file: {path}")
+        label = f"{description}: " if description else ""
+        raise BuildError(f"missing {label}{path}")
 
 
-def require_dir(path: Path) -> None:
+def require_dir(path: Path, description: str | None = None) -> None:
     if not path.is_dir():
-        raise BuildError(f"missing directory: {path}")
+        label = f"{description}: " if description else "directory: "
+        raise BuildError(f"missing {label}{path}")

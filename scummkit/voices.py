@@ -67,7 +67,9 @@ def _sample(samples: Path, name: str) -> Path:
 
 
 def _normalize_wavs(runner: Runner, src_dir: Path, label: str, samples: Path) -> None:
-    for wav in sorted(src_dir.glob("*.wav")):
+    wavs = sorted(src_dir.glob("*.wav"))
+    runner.log(f"  normalizing {len(wavs)} {label} WAV file(s)...")
+    for wav in wavs:
         dst = samples / wav.name
         if runner.verbose:
             runner.log(f"normalise {label}/{wav.name} -> samples-wav/{wav.name}")
@@ -225,6 +227,7 @@ def _encode_samples(runner: Runner, samples: Path, final: Path, audio: str) -> N
     if not runner.dry_run:
         final.mkdir(parents=True, exist_ok=True)
     wavs = sorted(samples.glob("*.wav"))
+    runner.log(f"  encoding {len(wavs)} sample(s) as {audio}...")
     for wav in wavs:
         require_file(wav)
         if runner.verbose:
@@ -253,14 +256,14 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     samples = options.out.expanduser() / "samples-wav"
     temp = options.out.expanduser() / "tmp"
     final = options.out.expanduser() / f"final-{options.audio}"
-    require_dir(builder)
-    require_dir(tools)
-    require_file(tools / "_cdt_silence")
-    require_file(tools / "monster.tbl")
-    require_dir(options.speech_wav)
-    require_dir(options.sfx_wav)
-    require_file(options.speech_wav / "STN_59_stans_89_1.wav")
-    require_file(options.sfx_wav / "2_sound_SBL_door-open.wav")
+    require_dir(builder, "MI1 Ultimate Talkie builder directory")
+    require_dir(tools, "MI1 builder tools directory")
+    require_file(tools / "_cdt_silence", "MI1 voice helper sample")
+    require_file(tools / "monster.tbl", "MI1 monster table")
+    require_dir(options.speech_wav, "MI1 extracted speech WAV directory")
+    require_dir(options.sfx_wav, "MI1 extracted SFX WAV directory")
+    require_file(options.speech_wav / "STN_59_stans_89_1.wav", "MI1 Speech.xwb extracted sample")
+    require_file(options.sfx_wav / "2_sound_SBL_door-open.wav", "MI1 SFXNew.xwb extracted sample")
     require_audio_tools(runner, options.audio)
     runner.log("MI1 voice processing")
     runner.log(f"speech wav: {options.speech_wav}")
@@ -277,6 +280,7 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     _normalize_wavs(runner, options.sfx_wav, "sfx", samples)
     _normalize_wavs(runner, options.speech_wav, "speech", samples)
     normalized_count = count_files(samples, "*.wav")
+    runner.log("  applying voice.bat special cases...")
     _make_mi1_special_cases(runner, tools, samples, temp)
     sample_count = count_files(samples, "*.wav")
     _encode_samples(runner, samples, final, options.audio)
@@ -310,16 +314,16 @@ def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     samples = options.out.expanduser() / "samples-wav"
     temp = options.out.expanduser() / "tmp"
     final = options.out.expanduser() / f"final-{options.audio}"
-    require_dir(builder)
-    require_dir(tools)
-    require_file(tools / "_cdt_silence")
-    require_file(tools / "monster.tbl")
-    require_dir(options.speech_wav)
-    require_dir(options.patch_wav)
-    require_file(options.speech_wav / "00000000.wav")
-    require_file(options.speech_wav / "000003d5.wav")
-    require_file(options.patch_wav / "vx112_DemBones_SE_nl_1.wav")
-    require_file(options.patch_wav / "vx112_DemBones_SE_nl_2.wav")
+    require_dir(builder, "MI2 Ultimate Talkie builder directory")
+    require_dir(tools, "MI2 builder tools directory")
+    require_file(tools / "_cdt_silence", "MI2 voice helper sample")
+    require_file(tools / "monster.tbl", "MI2 monster table")
+    require_dir(options.speech_wav, "MI2 extracted speech WAV directory")
+    require_dir(options.patch_wav, "MI2 extracted patch WAV directory")
+    require_file(options.speech_wav / "00000000.wav", "MI2 Speech.xwb extracted sample")
+    require_file(options.speech_wav / "000003d5.wav", "MI2 Speech.xwb extracted sample")
+    require_file(options.patch_wav / "vx112_DemBones_SE_nl_1.wav", "MI2 Patch.xwb extracted sample")
+    require_file(options.patch_wav / "vx112_DemBones_SE_nl_2.wav", "MI2 Patch.xwb extracted sample")
     require_audio_tools(runner, options.audio)
     runner.log("MI2 voice processing")
     runner.log(f"speech wav: {options.speech_wav}")
@@ -336,6 +340,7 @@ def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     _normalize_wavs(runner, options.speech_wav, "speech", samples)
     _normalize_wavs(runner, options.patch_wav, "patch", samples)
     normalized_count = count_files(samples, "*.wav")
+    runner.log("  applying voice.bat special cases...")
     _make_mi2_special_cases(runner, tools, samples, temp)
     sample_count = count_files(samples, "*.wav")
     _encode_samples(runner, samples, final, options.audio)

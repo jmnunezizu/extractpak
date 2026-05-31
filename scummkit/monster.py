@@ -7,6 +7,7 @@ import argparse
 import os
 import struct
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -36,6 +37,15 @@ FORMATS = {
 
 class MonsterError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class MonsterSummary:
+    referenced: int
+    packed: int
+    missing: int
+    unreferenced: int
+    size: int
 
 
 def die(message: str) -> None:
@@ -99,22 +109,26 @@ def validate_payload(path: Path, fmt: str) -> None:
         print(f"warning: {path} does not start with expected {fmt} magic", file=sys.stderr)
 
 
-def build_archive(args: argparse.Namespace) -> None:
-    fmt = args.format
+def _build_archive(
+    table: Path,
+    samples: Path,
+    out: Path,
+    fmt: str,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> MonsterSummary:
     if fmt == "raw":
-        die("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
-
-    table = Path(args.table)
-    samples = Path(args.samples)
-    out = Path(args.out)
+        raise MonsterError("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
+    if fmt not in FORMATS:
+        raise MonsterError(f"unsupported archive audio format: {fmt}; use one of: {', '.join(sorted(FORMATS))}")
     ext = FORMATS[fmt]["ext"]
 
     if not table.is_file():
-        die(f"missing monster table: {table}")
+        raise MonsterError(f"missing monster table: {table}")
     if not samples.is_dir():
-        die(f"missing samples directory: {samples}")
+        raise MonsterError(f"missing samples directory: {samples}")
 
-    entries = parse_table(table)
+    entries = parse_table_or_raise(table)
     available = sample_files(samples, ext)
 
     referenced_names = {name for _offset, name in entries}
@@ -135,17 +149,21 @@ def build_archive(args: argparse.Namespace) -> None:
             print(f"warning: {len(unreferenced) - 20} additional sample files are unreferenced", file=sys.stderr)
 
     if not packed_entries:
-        die("no referenced samples are available to pack")
+        raise MonsterError(
+            f"no referenced samples are available to pack from {samples}; "
+            f"expected files named by {table} with extension {ext}"
+        )
 
     index_size = len(packed_entries) * 16
     data = bytearray()
     index = bytearray()
 
-    if args.dry_run:
+    if dry_run:
         final_size = 4 + index_size + sum(path.stat().st_size for _offset, _name, path in packed_entries)
-        print_summary(len(entries), len(packed_entries), len(missing), len(unreferenced), final_size)
+        summary = MonsterSummary(len(entries), len(packed_entries), len(missing), len(unreferenced), final_size)
+        print_summary(summary)
         print(f"[dry-run] would write {out}")
-        return
+        return summary
 
     out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -154,7 +172,7 @@ def build_archive(args: argparse.Namespace) -> None:
         payload = path.read_bytes()
         if not payload:
             print(f"warning: referenced sample is empty: {path}", file=sys.stderr)
-        if args.verbose:
+        if verbose:
             print(f"pack 0x{offset:08x} {name}{ext} bytes={len(payload)}")
         index.extend(struct.pack(">IIII", offset, len(data), 0, len(payload)))
         data.extend(payload)
@@ -167,8 +185,21 @@ def build_archive(args: argparse.Namespace) -> None:
     os.replace(tmp, out)
 
     verify_archive(out, quiet=True)
-    print_summary(len(entries), len(packed_entries), len(missing), len(unreferenced), out.stat().st_size)
+    summary = MonsterSummary(len(entries), len(packed_entries), len(missing), len(unreferenced), out.stat().st_size)
+    print_summary(summary)
     print(f"archive: {out}")
+    return summary
+
+
+def build_archive(args: argparse.Namespace) -> MonsterSummary:
+    return _build_archive(
+        Path(args.table),
+        Path(args.samples),
+        Path(args.out),
+        args.format,
+        dry_run=args.dry_run,
+        verbose=args.verbose,
+    )
 
 
 def build_monster_archive(
@@ -178,24 +209,16 @@ def build_monster_archive(
     fmt: str,
     dry_run: bool = False,
     verbose: bool = False,
-) -> None:
-    args = argparse.Namespace(
-        table=str(table),
-        samples=str(samples),
-        out=str(out),
-        format=fmt,
-        dry_run=dry_run,
-        verbose=verbose,
-    )
-    build_archive(args)
+) -> MonsterSummary:
+    return _build_archive(table, samples, out, fmt, dry_run=dry_run, verbose=verbose)
 
 
-def print_summary(referenced: int, packed: int, missing: int, unreferenced: int, size: int) -> None:
-    print(f"referenced count: {referenced}")
-    print(f"packed count: {packed}")
-    print(f"missing count: {missing}")
-    print(f"unreferenced count: {unreferenced}")
-    print(f"final archive size: {size}")
+def print_summary(summary: MonsterSummary) -> None:
+    print(f"referenced count: {summary.referenced}")
+    print(f"packed count: {summary.packed}")
+    print(f"missing count: {summary.missing}")
+    print(f"unreferenced count: {summary.unreferenced}")
+    print(f"final archive size: {summary.size}")
 
 
 def verify_archive(path: Path, quiet: bool = False) -> None:
@@ -262,7 +285,10 @@ def main() -> None:
     if missing_args:
         die("missing required arguments: " + ", ".join("--" + name for name in missing_args))
 
-    build_archive(args)
+    try:
+        build_archive(args)
+    except MonsterError as error:
+        die(str(error))
 
 
 if __name__ == "__main__":
