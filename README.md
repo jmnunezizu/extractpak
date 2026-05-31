@@ -1,14 +1,17 @@
-# TalkieBuilder
+# SCUMMKit
 
-TalkieBuilder is a native cross-platform replacement for the Windows-only
-Ultimate Talkie Edition build toolchains for the Monkey Island Special Edition
-games.
+Native toolkit for building, inspecting and modifying classic LucasArts SCUMM
+game resources.
+
+SCUMMKit is an extraction, inspection, patching, and talkie generation toolkit
+for LucasArts SCUMM games. Its current native build pipeline replaces the
+Windows-only Ultimate Talkie Edition toolchains for the Monkey Island Special
+Edition games.
 
 It builds ScummVM-compatible Talkie Editions from assets that you already own.
-No game data is shipped in this repository. The project automates the same kind
-of extraction, patching, audio processing, and resource packing that the
-original Windows builders performed, but does it with native command line tools
-and a Python CLI.
+No game data is shipped in this repository. The project automates extraction,
+patching, audio processing, resource inspection, and resource packing with
+native command line tools and a Python CLI.
 
 Supported games:
 
@@ -18,17 +21,26 @@ Supported games:
 The original `extractpak` utility is still included for inspecting and
 extracting Special Edition `.pak` archives directly.
 
+## Why SCUMMKit?
+
+The project started as a Monkey Island PAK extraction experiment and evolved
+into a complete toolkit for building and inspecting SCUMM resources.
+
+The name reflects the broader scope beyond Talkie Edition generation:
+SCUMMKit is intended to be useful for extraction, inspection, patching, and
+resource-building workflows around classic LucasArts SCUMM games.
+
 ## Features
 
 - Native PAK extraction for `Monkey1.pak` and `monkey2.pak`
 - Native XACT wave bank (`.xwb`) inspection and extraction
 - Native ScummVM speech archive generation
+- SCUMM resource inspection commands
 - Native replacements for `build_monster.exe`, MI1 `wav2sbl.exe`, and the MI1
   `scummpacker.exe` SBL injection flow
 - Native MI1 music conversion using `vgmstream-cli` and SoX
 - Native MI1 SBL sound-effect injection
-- Python CLI: `python3 -m talkiebuilder`
-- MI1 resource inspection commands
+- Python CLI: `python3 -m scummkit`
 - Automated pytest coverage for CLI parsing, monster archive packing, XWB
   parsing, and SBL generation
 - Compatibility shell scripts retained under `scripts/`
@@ -45,7 +57,7 @@ You must provide:
 - The original Ultimate Talkie Edition builder files for the game you want to
   build.
 
-TalkieBuilder only automates the local build process. The generated output
+SCUMMKit only automates the local build process. The generated output
 folder contains LucasArts/Disney game assets derived from your installation and
 must not be redistributed.
 
@@ -54,7 +66,7 @@ must not be redistributed.
 Build Monkey Island 1:
 
 ```bash
-python3 -m talkiebuilder build mi1 \
+python3 -m scummkit build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
@@ -66,7 +78,7 @@ python3 -m talkiebuilder build mi1 \
 Build Monkey Island 2:
 
 ```bash
-python3 -m talkiebuilder build mi2 \
+python3 -m scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
@@ -83,7 +95,7 @@ installation folder.
 
    ```bash
    git clone <repository-url>
-   cd extractpak
+   cd SCUMMKit
    ```
 
 2. Install required tools:
@@ -103,7 +115,7 @@ installation folder.
    Install `vgmstream-cli` from your package manager, upstream releases, or
    source if your distribution does not provide it.
 
-   Windows users can run TalkieBuilder from WSL, MSYS2, or another environment
+   Windows users can run SCUMMKit from WSL, MSYS2, or another environment
    that provides Python, `bspatch`, `sox`, `ffmpeg`, and `vgmstream-cli` on
    `PATH`.
 
@@ -116,13 +128,13 @@ installation folder.
 4. Verify the Python package:
 
    ```bash
-   python3 -m py_compile talkiebuilder/*.py
+   python3 -m py_compile scummkit/*.py
    python3 -m pytest
    ```
 
 ### Tool Requirements
 
-- Python 3.9 or newer: runs the `talkiebuilder` package and tests.
+- Python 3.9 or newer: runs the `scummkit` package and tests.
 - `bspatch`: applies the Ultimate Talkie binary patch files.
 - `ffmpeg`: decodes WMA/XWMA sound-effect entries where needed.
 - `sox`: performs the trim, mix, gain, pad, and audio conversion operations
@@ -176,7 +188,7 @@ MonkeyIsland2/app/audio/
 ## Building Monkey Island 1
 
 ```bash
-python3 -m talkiebuilder build mi1 \
+python3 -m scummkit build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
@@ -257,7 +269,7 @@ the SCUMM Bar chatter ambience in root playback.
 ## Building Monkey Island 2
 
 ```bash
-python3 -m talkiebuilder build mi2 \
+python3 -m scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
@@ -298,20 +310,20 @@ For FLAC or MP3, the speech archive is named `monkey2.sof` or `monkey2.so3`.
 
 ## Inspecting Resources
 
-TalkieBuilder can inspect generated MI1 SCUMM resources. This is useful when
+SCUMMKit can inspect generated MI1 SCUMM resources. This is useful when
 debugging SBL injection or checking whether a sound resource is visible through
 the resource index.
 
 ```bash
-python3 -m talkiebuilder inspect mi1 resources --game-dir /tmp/mi1-test
-python3 -m talkiebuilder inspect mi1 room --game-dir /tmp/mi1-test --room 41
-python3 -m talkiebuilder inspect mi1 resource --game-dir /tmp/mi1-test --room 41 --id 71
+python3 -m scummkit inspect mi1 resources --game-dir /tmp/mi1-test
+python3 -m scummkit inspect mi1 room --game-dir /tmp/mi1-test --room 41
+python3 -m scummkit inspect mi1 resource --game-dir /tmp/mi1-test --room 41 --id 71
 ```
 
 Dump one resource:
 
 ```bash
-python3 -m talkiebuilder inspect mi1 resource \
+python3 -m scummkit inspect mi1 resource \
   --game-dir /tmp/mi1-test \
   --room 41 \
   --id 71 \
@@ -321,7 +333,7 @@ python3 -m talkiebuilder inspect mi1 resource \
 Compare against a pre-SBL output:
 
 ```bash
-python3 -m talkiebuilder inspect mi1 resource \
+python3 -m scummkit inspect mi1 resource \
   --game-dir /tmp/mi1-test \
   --compare /tmp/mi1-test/.work/sbl/pre-sbl \
   --room 41 \
@@ -372,7 +384,7 @@ Extraction notes:
 
 ## Reference: How It Works
 
-TalkieBuilder replaces a chain of Windows batch files and Windows executables
+SCUMMKit replaces a chain of Windows batch files and Windows executables
 with native code and common command line tools.
 
 MI1 pipeline:
@@ -418,11 +430,11 @@ and packs the ScummVM speech archive.
 - `monster.sou`: raw/WAV speech archive name used by classic SCUMM talkie
   games; native raw generation is not currently implemented.
 - `monster.tbl`: table from the Ultimate Talkie builders mapping original
-  script offsets to speech sample names. TalkieBuilder uses it to decide which
+  script offsets to speech sample names. SCUMMKit uses it to decide which
   processed samples belong in the ScummVM archive.
 - `SBL resources`: MI1 sound resources used for high-quality sound effects.
   The original builder generated them with `wav2sbl.exe` and injected them with
-  `scummpacker.exe`; TalkieBuilder implements that path natively.
+  `scummpacker.exe`; SCUMMKit implements that path natively.
 - `patch10.000` / `patch10.001`: MI1 binary patches for classic SCUMM resource
   files.
 - `patch02.000` / `patch02.001`: MI2 binary patches for classic SCUMM resource
@@ -450,7 +462,7 @@ behavior, and SBL conversion with generated WAV data.
 For syntax-only validation:
 
 ```bash
-python3 -m py_compile talkiebuilder/*.py
+python3 -m py_compile scummkit/*.py
 ```
 
 ## Project History
@@ -474,7 +486,7 @@ without Wine, Windows batch files, or opaque Windows-only executables.
 - Windows use is expected to work best through WSL or a Unix-like environment
   with the required tools on `PATH`.
 - The shell scripts remain for compatibility, but new orchestration should use
-  `python3 -m talkiebuilder`.
+  `python3 -m scummkit`.
 
 ## Troubleshooting
 
@@ -530,7 +542,7 @@ If you used a non-Ogg mode, check for the matching archive extension:
 
 The native builders expect the known Ultimate Talkie builder layouts and patch
 file names. If a future builder release changes file names, patch versions, or
-batch logic, TalkieBuilder may need updates. The analysis notes in `docs/`
+batch logic, SCUMMKit may need updates. The analysis notes in `docs/`
 record the behavior currently implemented.
 
 ## Credits

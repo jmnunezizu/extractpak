@@ -1,7 +1,7 @@
 import struct
 from pathlib import Path
 
-from talkiebuilder import xwb
+from scummkit import xwb
 
 
 def test_decode_format_pcm() -> None:

@@ -8,7 +8,7 @@ from .runner import BuildError
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="talkiebuilder")
+    parser = argparse.ArgumentParser(prog="scummkit")
     sub = parser.add_subparsers(dest="command", required=True)
     build = sub.add_parser("build", help="build an Ultimate Talkie output folder")
     games = build.add_subparsers(dest="game", required=True)
