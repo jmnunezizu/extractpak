@@ -172,6 +172,7 @@ def _build_archive(
     if quiet:
         print(f"  monster: packing {len(packed_entries)} referenced sample(s)")
 
+    total_packed = len(packed_entries)
     for index_no, (offset, name, path) in enumerate(packed_entries, 1):
         validate_payload(path, fmt)
         payload = path.read_bytes()
@@ -181,10 +182,12 @@ def _build_archive(
             print(f"pack 0x{offset:08x} {name}{ext} bytes={len(payload)}")
         index.extend(struct.pack(">IIII", offset, len(data), 0, len(payload)))
         data.extend(payload)
-        if quiet and (index_no == len(packed_entries) or index_no % 500 == 0):
+        if quiet:
+            percent = int(index_no * 100 / total_packed)
+            suffix = ", done" if index_no == total_packed else ""
             print(
-                f"\r\033[K  monster: packed {index_no}/{len(packed_entries)} sample(s)",
-                end="\n" if index_no == len(packed_entries) else "",
+                f"\r\033[K  monster packed: {percent:3d}% ({index_no}/{total_packed}){suffix}",
+                end="\n" if index_no == total_packed else "",
                 flush=True,
             )
 

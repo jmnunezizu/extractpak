@@ -33,6 +33,16 @@ class Runner:
             self._inline_status = False
         print(message)
 
+    def progress(self, label: str, current: int, total: int) -> None:
+        percent = 100 if total <= 0 else int(current * 100 / total)
+        done = total <= 0 or current >= total
+        suffix = ", done" if done else ""
+        self.status(
+            f"  {label}: {percent:3d}% ({current}/{total}){suffix}",
+            inline=True,
+            done=done,
+        )
+
     def require_tool(self, name: str, hint: str) -> None:
         if shutil.which(name) is None:
             raise BuildError(f"missing required tool '{name}': {hint}")

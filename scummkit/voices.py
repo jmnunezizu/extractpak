@@ -72,7 +72,7 @@ def _normalize_wavs(runner: Runner, src_dir: Path, label: str, samples: Path) ->
     wavs = sorted(src_dir.glob("*.wav"))
     runner.log(f"  normalizing {len(wavs)} {label} WAV file(s)...")
     if runner.quiet:
-        runner.status(f"  {label}: normalizing {len(wavs)} WAV file(s)", inline=True)
+        runner.progress(f"{label} normalized", 0, len(wavs))
     for index, wav in enumerate(wavs, 1):
         dst = samples / wav.name
         if runner.verbose:
@@ -86,12 +86,8 @@ def _normalize_wavs(runner: Runner, src_dir: Path, label: str, samples: Path) ->
                 runner.run(["sox", wav, "-D", dst])
             else:
                 raise
-        if runner.quiet and (index == len(wavs) or index % 500 == 0):
-            runner.status(
-                f"  {label}: normalized {index}/{len(wavs)} WAV file(s)",
-                inline=True,
-                done=index == len(wavs),
-            )
+        if runner.quiet:
+            runner.progress(f"{label} normalized", index, len(wavs))
 
 
 def _trim(runner: Runner, samples: Path, src: str, dst: str, start: str, length: str) -> None:
@@ -239,18 +235,14 @@ def _encode_samples(runner: Runner, samples: Path, final: Path, audio: str) -> N
     wavs = sorted(samples.glob("*.wav"))
     runner.log(f"  encoding {len(wavs)} sample(s) as {audio}...")
     if runner.quiet:
-        runner.status(f"  voices: encoding {len(wavs)} sample(s) as {audio}", inline=True)
+        runner.progress(f"voices encoded as {audio}", 0, len(wavs))
     for index, wav in enumerate(wavs, 1):
         require_file(wav)
         if runner.verbose:
             runner.log(f"encode {audio} {wav.stem}")
         encode_wav(runner, wav, final / f"{wav.stem}.{final_ext(audio)}", audio)
-        if runner.quiet and (index == len(wavs) or index % 500 == 0):
-            runner.status(
-                f"  voices: encoded {index}/{len(wavs)} sample(s)",
-                inline=True,
-                done=index == len(wavs),
-            )
+        if runner.quiet:
+            runner.progress(f"voices encoded as {audio}", index, len(wavs))
 
 
 def _monster_ref_names(table: Path) -> set[str]:

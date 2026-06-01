@@ -60,8 +60,7 @@ python3 -m scummkit build mi1 \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
-  --music hybrid \
-  --verbose
+  --music hybrid
 ```
 
 Build Monkey Island 2:
@@ -71,8 +70,7 @@ python3 -m scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg \
-  --verbose
+  --audio ogg
 ```
 
 Add the generated output folder to ScummVM, not the original Special Edition
@@ -199,7 +197,7 @@ MonkeyIsland2/app/audio/
 | The Secret of Monkey Island        | Complete, Ogg validated | Speech archive generation, music conversion, SBL injection, ambience, and root soundtrack selection. FLAC/MP3/raw are not currently validated for the MI1 build pipeline.                                 |
 | Monkey Island 2: LeChuck's Revenge | Complete, Ogg validated | Speech archive generation and patched ScummVM output. FLAC/MP3 use the same compressed archive path when encoders are available. Raw `monster.sou` generation is not implemented.                         |
 | MI1 music modes                    | `cd`, `hybrid`, `se`    | `hybrid` is the default. `cd` uses classic CD root tracks. `se` uses the full Special Edition root soundtrack.                                                                                            |
-| Build output mode                  | normal, quiet, verbose  | Normal mode prints stage and summary output. `--quiet` suppresses external-tool chatter and shows a stage progress bar plus known item counts. `--verbose` prints detailed command and file-level output. |
+| Build output mode                  | progress, plain, verbose | Progress output is the default and shows a stage bar plus Git-style item counts. `--no-progress` uses plain stage output. `--verbose` prints detailed command and file-level output.                    |
 | Doctor output                      | text, JSON              | `scummkit doctor` prints human-readable checks. `scummkit doctor --json` emits machine-readable check status and details.                                                                                 |
 
 ## Building Monkey Island 1
@@ -210,8 +208,7 @@ python3 -m scummkit build mi1 \
   --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
-  --music hybrid \
-  --verbose
+  --music hybrid
 ```
 
 Required inputs:
@@ -237,8 +234,8 @@ Options:
 - `--skip-sbl`: skip native SBL sound-effect injection.
 - `--skip-music`: skip music conversion and root soundtrack copying.
 - `--dry-run`: print planned steps without writing final output.
-- `--quiet`: suppress external-tool chatter and show stage progress plus known
-  item counts.
+- `--quiet`: explicitly request the default progress-oriented output.
+- `--no-progress`: use plain stage output without inline progress updates.
 - `--verbose`: print detailed processing and root soundtrack mapping output.
 
 Expected output:
@@ -292,8 +289,7 @@ python3 -m scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg \
-  --verbose
+  --audio ogg
 ```
 
 Required inputs:
@@ -313,8 +309,8 @@ Options:
 - `--audio ogg|flac|mp3`: target compressed speech format. Ogg is the primary
   validated target.
 - `--dry-run`: print planned steps without writing final output.
-- `--quiet`: suppress external-tool chatter and show stage progress plus known
-  item counts.
+- `--quiet`: explicitly request the default progress-oriented output.
+- `--no-progress`: use plain stage output without inline progress updates.
 - `--verbose`: print detailed processing output.
 
 Expected output:

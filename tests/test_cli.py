@@ -27,7 +27,74 @@ def test_cli_argument_parsing() -> None:
     assert args.audio == "ogg"
     assert args.music == "hybrid"
     assert args.verbose is True
-    assert args.quiet is False
+    assert args.quiet is None
+
+
+def test_cli_build_defaults_to_progress_output(monkeypatch) -> None:
+    from scummkit import mi2
+    from scummkit.commands import build
+
+    captured = {}
+
+    def fake_build(options: mi2.BuildOptions) -> None:
+        captured["quiet"] = options.quiet
+
+    monkeypatch.setattr(mi2, "build", fake_build)
+
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        [
+            "build",
+            "mi2",
+            "--pak",
+            "monkey2.pak",
+            "--builder",
+            "builder",
+            "--out",
+            "out",
+            "--audio",
+            "ogg",
+        ]
+    )
+
+    assert args.quiet is None
+    build.run(args)
+    assert captured["quiet"] is True
+
+
+def test_cli_build_verbose_disables_progress_output(monkeypatch) -> None:
+    from scummkit import mi2
+    from scummkit.commands import build
+
+    captured = {}
+
+    def fake_build(options: mi2.BuildOptions) -> None:
+        captured["quiet"] = options.quiet
+        captured["verbose"] = options.verbose
+
+    monkeypatch.setattr(mi2, "build", fake_build)
+
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        [
+            "build",
+            "mi2",
+            "--pak",
+            "monkey2.pak",
+            "--builder",
+            "builder",
+            "--out",
+            "out",
+            "--audio",
+            "ogg",
+            "--verbose",
+        ]
+    )
+
+    assert args.quiet is None
+    build.run(args)
+    assert captured["quiet"] is False
+    assert captured["verbose"] is True
 
 
 def test_cli_build_quiet_argument_parsing() -> None:
@@ -51,6 +118,30 @@ def test_cli_build_quiet_argument_parsing() -> None:
     assert args.command == "build"
     assert args.game == "mi2"
     assert args.quiet is True
+    assert args.verbose is False
+
+
+def test_cli_build_no_progress_argument_parsing() -> None:
+    parser = cli.build_parser()
+    args = parser.parse_args(
+        [
+            "build",
+            "mi2",
+            "--pak",
+            "monkey2.pak",
+            "--builder",
+            "builder",
+            "--out",
+            "out",
+            "--audio",
+            "ogg",
+            "--no-progress",
+        ]
+    )
+
+    assert args.command == "build"
+    assert args.game == "mi2"
+    assert args.quiet is False
     assert args.verbose is False
 
 
@@ -353,6 +444,18 @@ def test_build_progress_prints_stage_bar(capsys) -> None:
     assert "[##--] 1/2 Extracting PAK assets done" in output
     assert "[##--] 1/2 Building speech archive..." in output
     assert "[####] 2/2 Building speech archive done" in output
+
+
+def test_runner_progress_prints_git_style_status(capsys) -> None:
+    from scummkit.runner import Runner
+
+    runner = Runner(quiet=True)
+    runner.progress("voices encoded as ogg", 4, 10)
+    runner.progress("voices encoded as ogg", 10, 10)
+
+    output = capsys.readouterr().out
+    assert "\r\033[K  voices encoded as ogg:  40% (4/10)" in output
+    assert "\r\033[K  voices encoded as ogg: 100% (10/10), done\n" in output
 
 
 def test_build_summary_prints_key_fields(capsys) -> None:

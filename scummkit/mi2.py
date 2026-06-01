@@ -43,14 +43,10 @@ def _stage_done(progress: BuildProgress, label: str) -> None:
 
 
 def _bank_progress(runner: Runner, label: str):
-    last_reported = {"done": 0}
-
     def report(done: int, total: int) -> None:
         if not runner.quiet:
             return
-        if done == total or done - last_reported["done"] >= 500:
-            last_reported["done"] = done
-            runner.status(f"  {label}: extracted {done}/{total} entries", inline=True, done=done == total)
+        runner.progress(f"{label} extracted", done, total)
 
     return report
 

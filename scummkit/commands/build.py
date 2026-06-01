@@ -18,10 +18,19 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
         game_parser.add_argument("--audio", choices=["ogg", "flac", "mp3", "raw"], required=True)
         game_parser.add_argument("--dry-run", action="store_true")
         game_parser.add_argument("--verbose", action="store_true")
-        game_parser.add_argument(
+        progress = game_parser.add_mutually_exclusive_group()
+        progress.add_argument(
             "--quiet",
+            dest="quiet",
             action="store_true",
-            help="suppress external-tool chatter and show stage progress only",
+            default=None,
+            help="show progress-oriented output; this is the default",
+        )
+        progress.add_argument(
+            "--no-progress",
+            dest="quiet",
+            action="store_false",
+            help="use plain stage output instead of progress-oriented output",
         )
 
     mi1_parser = games.add_parser("mi1", help="build The Secret of Monkey Island Ultimate Talkie")
@@ -42,6 +51,7 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
 def run(args: argparse.Namespace) -> None:
     if args.quiet and args.verbose:
         raise BuildError("use either --quiet or --verbose, not both")
+    quiet = (args.quiet if args.quiet is not None else True) and not args.verbose
     if args.game == "mi1":
         mi1.build(
             mi1.BuildOptions(
@@ -52,7 +62,7 @@ def run(args: argparse.Namespace) -> None:
                 music=args.music,
                 dry_run=args.dry_run,
                 verbose=args.verbose,
-                quiet=args.quiet,
+                quiet=quiet,
                 skip_sbl=args.skip_sbl,
                 skip_music=args.skip_music,
             )
@@ -66,7 +76,7 @@ def run(args: argparse.Namespace) -> None:
                 audio=args.audio,
                 dry_run=args.dry_run,
                 verbose=args.verbose,
-                quiet=args.quiet,
+                quiet=quiet,
             )
         )
     else:

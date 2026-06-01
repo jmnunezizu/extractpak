@@ -139,15 +139,11 @@ def process_mi1_music(options: Mi1MusicOptions) -> None:
     _decode_bank(runner, audio_dir / "MusicOriginal.xwb", original, "classic CD music")
     runner.log(f"  converting {len(CD_TRACKS)} classic CD tracks...")
     if runner.quiet:
-        runner.status(f"  music: converting {len(CD_TRACKS)} classic CD track(s)")
+        runner.progress("classic CD music converted", 0, len(CD_TRACKS))
     for index, (src, dst, effects) in enumerate(CD_TRACKS, 1):
         _sox_track(runner, original, src, cd_out, dst, effects, "cd music")
-        if runner.quiet and (index == len(CD_TRACKS) or index % 10 == 0):
-            runner.status(
-                f"  music: converted {index}/{len(CD_TRACKS)} classic CD track(s)",
-                inline=True,
-                done=index == len(CD_TRACKS),
-            )
+        if runner.quiet:
+            runner.progress("classic CD music converted", index, len(CD_TRACKS))
 
     runner.log("  decoding Special Edition music banks...")
     if runner.quiet:
@@ -158,15 +154,12 @@ def process_mi1_music(options: Mi1MusicOptions) -> None:
     se_total = len(SE_MUSIC_TRACKS) + len(SE_AMBIENCE_TRACKS) + 4
     se_done = 0
     if runner.quiet:
-        runner.status(f"  music: converting {se_total} Special Edition track operation(s)")
+        runner.progress("Special Edition music converted", 0, se_total)
     for src, dst, effects in SE_MUSIC_TRACKS:
         _sox_track(runner, new, src, se_out, dst, effects, "se music")
         se_done += 1
-        if runner.quiet and se_done % 10 == 0:
-            runner.status(
-                f"  music: converted {se_done}/{se_total} Special Edition operation(s)",
-                inline=True,
-            )
+        if runner.quiet:
+            runner.progress("Special Edition music converted", se_done, se_total)
 
     require_file(ambience / "AMB_ScummBar_01.wav", "decoded SCUMM Bar ambience")
     require_file(new / "track9.wav", "decoded Special Edition music track")
@@ -181,12 +174,8 @@ def process_mi1_music(options: Mi1MusicOptions) -> None:
     for src, dst, effects in SE_AMBIENCE_TRACKS:
         _sox_track(runner, ambience, src, se_out, dst, effects, "se ambience")
         se_done += 1
-        if runner.quiet and (se_done == se_total or se_done % 10 == 0):
-            runner.status(
-                f"  music: converted {se_done}/{se_total} Special Edition operation(s)",
-                inline=True,
-                done=se_done == se_total,
-            )
+        if runner.quiet:
+            runner.progress("Special Edition music converted", se_done, se_total)
 
     runner.log("MI1 music conversion complete.")
     runner.log(f"  classic CD music: {count_files(cd_out, '*.ogg')} files in {cd_out}")
