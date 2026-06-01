@@ -263,8 +263,28 @@ def test_command_modules_register_public_commands() -> None:
         (["monster", "--verify", "monkey.sog"], "monster"),
         (["xwb", "Speech.xwb", "--list"], "xwb"),
         (["wav2sbl", "--verify", "sound.sbl"], "wav2sbl"),
+        (
+            [
+                "inject",
+                "mi1",
+                "sbl",
+                "--builder",
+                "builder",
+                "--samples-wav",
+                "samples",
+                "--monkey000",
+                "monkey.000",
+                "--monkey001",
+                "monkey.001",
+                "--work",
+                "work",
+            ],
+            "inject",
+        ),
     ]:
-        assert parser.parse_args(argv).command == expected
+        args = parser.parse_args(argv)
+        assert args.command == expected
+        assert callable(args.func)
 
 
 def test_cli_inject_mi1_sbl_argument_parsing() -> None:

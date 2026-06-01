@@ -156,7 +156,7 @@ def show_resource(
         )
 
 
-def add_inspect_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def add_inspect_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser], handler=None) -> None:
     inspect = sub.add_parser("inspect", help="inspect generated game resources")
     games = inspect.add_subparsers(dest="game", required=True)
     mi1 = games.add_parser("mi1", help="inspect MI1 SCUMM resources")
@@ -164,10 +164,14 @@ def add_inspect_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser])
 
     resources = mi1_actions.add_parser("resources", help="list indexed resources")
     resources.add_argument("--game-dir", type=Path, required=True)
+    if handler is not None:
+        resources.set_defaults(func=handler)
 
     room = mi1_actions.add_parser("room", help="list resources in a room")
     room.add_argument("--game-dir", type=Path, required=True)
     room.add_argument("--room", type=int, required=True)
+    if handler is not None:
+        room.set_defaults(func=handler)
 
     resource = mi1_actions.add_parser("resource", help="show or dump one indexed resource")
     resource.add_argument("--game-dir", type=Path, required=True)
@@ -176,6 +180,8 @@ def add_inspect_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser])
     resource.add_argument("--type", choices=sorted(RESOURCE_TYPES), default="sound")
     resource.add_argument("--dump", type=Path)
     resource.add_argument("--compare", type=Path, help="compare against another game directory")
+    if handler is not None:
+        resource.set_defaults(func=handler)
 
 
 def run_inspect(args: argparse.Namespace) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 from pathlib import Path
 
 from .. import xwb
@@ -18,6 +19,7 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
         action="store_true",
         help="decode XACT WMA entries via ffmpeg after wrapping them as XWMA",
     )
+    parser.set_defaults(func=partial(run, parser))
 
 
 def run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
@@ -46,4 +48,3 @@ def run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
             parser.error("output_dir is required unless --list is used")
     except xwb.XwbError as error:
         raise BuildError(str(error)) from error
-

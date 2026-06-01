@@ -43,9 +43,11 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     )
     mi1_parser.add_argument("--skip-sbl", action="store_true")
     mi1_parser.add_argument("--skip-music", action="store_true")
+    mi1_parser.set_defaults(func=run)
 
     mi2_parser = games.add_parser("mi2", help="build Monkey Island 2 Ultimate Talkie")
     add_common(mi2_parser)
+    mi2_parser.set_defaults(func=run)
 
 
 def run(args: argparse.Namespace) -> None:

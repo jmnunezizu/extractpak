@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 from pathlib import Path
 
 from .. import mi1_sbl, sbl
@@ -12,6 +13,7 @@ def register_wav2sbl(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -
     parser.add_argument("input", nargs="?", type=Path)
     parser.add_argument("output", nargs="?", type=Path)
     parser.add_argument("--verify", type=Path, help="dump information about an existing SBL file")
+    parser.set_defaults(func=partial(run_wav2sbl, parser))
 
 
 def register_inject(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -28,6 +30,7 @@ def register_inject(sub: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     inject_sbl.add_argument("--sample-rate", type=int, default=22050)
     inject_sbl.add_argument("--dry-run", action="store_true")
     inject_sbl.add_argument("--verbose", action="store_true")
+    inject_sbl.set_defaults(func=run_inject_mi1_sbl)
 
 
 def run_wav2sbl(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:

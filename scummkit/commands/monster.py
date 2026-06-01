@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 from pathlib import Path
 
 from .. import monster
@@ -16,6 +17,7 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser.add_argument("--dry-run", action="store_true", help="print planned work without writing output")
     parser.add_argument("--verbose", action="store_true", help="print every packed file")
     parser.add_argument("--verify", help="verify an existing archive instead of building")
+    parser.set_defaults(func=partial(run, parser))
 
 
 def run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:

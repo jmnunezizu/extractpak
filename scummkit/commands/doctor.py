@@ -11,6 +11,7 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     parser = sub.add_parser("doctor", help="check SCUMMKit dependencies and environment")
     parser.add_argument("--out", type=Path, help="optional output directory write-permission probe")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON")
+    parser.set_defaults(func=run)
 
 
 def run(args: argparse.Namespace) -> None:
