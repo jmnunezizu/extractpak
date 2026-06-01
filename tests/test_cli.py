@@ -306,6 +306,8 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
     audio.mkdir(parents=True)
     tools.mkdir(parents=True)
     pak.write_bytes(b"pak")
+    extractpak = tmp_path / "extractpak"
+    extractpak.write_bytes(b"extractpak")
     (builder / "readme.txt").write_text("readme")
     for name in ("patch02.000", "patch02.001", "monster.tbl"):
         (tools / name).write_bytes(b"patch")
@@ -314,6 +316,7 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
 
     monkeypatch.setattr(Runner, "require_tool", lambda self, name, hint: None)
     monkeypatch.setattr(mi2, "require_audio_tools", lambda runner, audio: None)
+    monkeypatch.setattr(mi2, "EXTRACTPAK", extractpak)
 
     mi2.build(mi2.BuildOptions(pak=pak, builder=builder, out=out, audio="ogg", dry_run=True))
 
