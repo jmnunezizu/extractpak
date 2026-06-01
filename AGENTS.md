@@ -15,6 +15,9 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
   unless the change is clearly shared infrastructure and is covered by tests.
 - Keep orchestration in Python package code under `scummkit/`. The build
   pipeline should not require shell scripts.
+- Register buildable games through `scummkit/builders/` using the shared
+  `BuildSpec` interface. Game-specific CLI arguments and option construction
+  belong in the matching builder spec module.
 - Use `pathlib`, `argparse`, `dataclasses`, `subprocess`, and `struct` in
   Python code, following the existing package style.
 - Keep Ogg as the primary validated output path. Be explicit when FLAC/MP3/raw
@@ -33,7 +36,7 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
 Run the lightweight checks after code changes:
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
+PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py scummkit/builders/*.py
 python3 -m pytest
 ```
 
@@ -73,6 +76,7 @@ python3 -m scummkit build mi2 \
 │   ├── __init__.py                    # Package marker and version-adjacent metadata location.
 │   ├── __main__.py                    # Enables `python3 -m scummkit`.
 │   ├── audio.py                       # Audio conversion helpers and external encoder checks.
+│   ├── builders/                      # BuildSpec registry and per-game CLI/build adapters.
 │   ├── cli.py                         # Top-level argparse parser and dispatch.
 │   ├── commands/                      # Command-specific parser registration and handlers.
 │   ├── mi1.py                         # MI1 build orchestration.

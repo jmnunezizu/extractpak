@@ -28,6 +28,7 @@ def test_cli_argument_parsing() -> None:
     assert args.music == "hybrid"
     assert args.verbose is True
     assert args.quiet is None
+    assert args.build_spec.game == "mi1"
 
 
 def test_cli_build_defaults_to_progress_output(monkeypatch) -> None:
@@ -194,6 +195,34 @@ def test_cli_mi1_music_argument_parsing() -> None:
     )
 
     assert args.music == "se"
+
+
+def test_builders_register_expected_games() -> None:
+    from scummkit.builders import all_builders
+
+    specs = all_builders()
+
+    assert [spec.game for spec in specs] == ["mi1", "mi2"]
+    for spec in specs:
+        assert spec.title
+        assert spec.help
+        assert callable(spec.add_arguments)
+        assert callable(spec.build_options)
+        assert callable(spec.run)
+
+
+def test_build_parser_attaches_builder_specs() -> None:
+    parser = cli.build_parser()
+
+    mi1_args = parser.parse_args(
+        ["build", "mi1", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"]
+    )
+    mi2_args = parser.parse_args(
+        ["build", "mi2", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"]
+    )
+
+    assert mi1_args.build_spec.game == "mi1"
+    assert mi2_args.build_spec.game == "mi2"
 
 
 def test_cli_inspect_argument_parsing() -> None:
