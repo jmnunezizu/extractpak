@@ -23,3 +23,21 @@ Substantial local changes include:
 The MIT License in this repository applies to the local modifications and
 documentation. The original upstream code should be treated as having no
 explicit license unless the upstream author publishes one.
+
+Ultimate Talkie patch data
+
+SCUMMKit includes minimal patch/table data from the original Monkey Island
+Ultimate Talkie Edition builders by LogicDeLuxe:
+
+- third_party/ultimate-talkie/mi1/patch10.000
+- third_party/ultimate-talkie/mi1/patch10.001
+- third_party/ultimate-talkie/mi1/monster.tbl
+- third_party/ultimate-talkie/mi2/patch02.000
+- third_party/ultimate-talkie/mi2/patch02.001
+- third_party/ultimate-talkie/mi2/monster.tbl
+
+These files are used with permission from the original patch author. Preserve
+the original patch credit and license terms in licenses/original_ute_builder.txt.
+They are third-party patch data, not MIT-licensed SCUMMKit source code. They are
+provided for building local ScummVM-compatible outputs from legally owned game
+installs. Do not redistribute generated game output or commercial game assets.

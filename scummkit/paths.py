@@ -5,3 +5,4 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXTRACTPAK = REPO_ROOT / "extractpak"
+THIRD_PARTY_UTE = REPO_ROOT / "third_party" / "ultimate-talkie"

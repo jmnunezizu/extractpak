@@ -7,9 +7,9 @@ from ..builder_inputs import format_dependency_report
 
 
 def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = sub.add_parser("builder-inputs", help="report remaining Ultimate Talkie builder data dependencies")
+    parser = sub.add_parser("builder-inputs", help="report Ultimate Talkie patch/table data sources")
     parser.add_argument("game", choices=["mi1", "mi2"])
-    parser.add_argument("--builder", type=Path, help="optional builder directory to check for required files")
+    parser.add_argument("--builder", type=Path, help="optional original builder directory to check instead of bundled data")
     parser.set_defaults(func=run)
 
 

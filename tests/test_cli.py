@@ -49,8 +49,6 @@ def test_cli_build_defaults_to_progress_output(monkeypatch) -> None:
             "mi2",
             "--pak",
             "monkey2.pak",
-            "--builder",
-            "builder",
             "--out",
             "out",
             "--audio",
@@ -215,14 +213,16 @@ def test_build_parser_attaches_builder_specs() -> None:
     parser = cli.build_parser()
 
     mi1_args = parser.parse_args(
-        ["build", "mi1", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"]
+        ["build", "mi1", "--pak", "p", "--out", "o", "--audio", "ogg"]
     )
     mi2_args = parser.parse_args(
         ["build", "mi2", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"]
     )
 
     assert mi1_args.build_spec.game == "mi1"
+    assert mi1_args.builder is None
     assert mi2_args.build_spec.game == "mi2"
+    assert mi2_args.builder == Path("b")
 
 
 def test_cli_inspect_argument_parsing() -> None:
@@ -443,6 +443,17 @@ def test_builder_inputs_report_excludes_removed_helper_files(tmp_path: Path) -> 
     assert "No builder readme or _cdt_silence helper sample is required" in report
 
 
+def test_builder_inputs_report_defaults_to_bundled_patch_data() -> None:
+    from scummkit.builder_inputs import format_dependency_report
+
+    report = format_dependency_report("mi1")
+
+    assert "patch10.000" in report
+    assert "tools/patch10.000" not in report
+    assert "[found]" in report
+    assert "included with permission" in report
+
+
 def test_write_build_note_uses_scummkit_note_name(tmp_path: Path, monkeypatch) -> None:
     from scummkit import builder_inputs
 
@@ -452,7 +463,7 @@ def test_write_build_note_uses_scummkit_note_name(tmp_path: Path, monkeypatch) -
         game="mi2",
         out=tmp_path,
         pak=Path("/games/monkey2.pak"),
-        builder=Path("/builder"),
+        patch_data_source=Path("/builder"),
         audio="ogg",
     )
 

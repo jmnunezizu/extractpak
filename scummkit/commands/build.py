@@ -13,7 +13,11 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
 
     def add_common(game_parser: argparse.ArgumentParser) -> None:
         game_parser.add_argument("--pak", type=Path, required=True)
-        game_parser.add_argument("--builder", type=Path, required=True)
+        game_parser.add_argument(
+            "--builder",
+            type=Path,
+            help="optional original Ultimate Talkie builder folder; defaults to bundled patch/table data",
+        )
         game_parser.add_argument("--out", type=Path, required=True)
         game_parser.add_argument("--audio", choices=["ogg", "flac", "mp3", "raw"], required=True)
         game_parser.add_argument("--dry-run", action="store_true")

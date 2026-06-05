@@ -9,7 +9,7 @@ from typing import Optional
 
 from . import mi1_sbl, monster, music as mi1_music, sbl, voices, xwb
 from .audio import count_files, require_audio_tools
-from .builder_inputs import format_dependency_report, write_build_note
+from .builder_inputs import format_dependency_report, resolve_patch_data_source, write_build_note
 from .mi2 import archive_name
 from .paths import EXTRACTPAK
 from .progress import BuildProgress
@@ -20,7 +20,7 @@ from .summary import BuildSummary, print_build_summary
 @dataclass
 class BuildOptions:
     pak: Path
-    builder: Path
+    builder: Path | None
     out: Path
     audio: str
     music: str = "hybrid"
@@ -202,9 +202,9 @@ def build(options: BuildOptions) -> None:
         raise BuildError("unsupported MI1 music mode: use --music cd, --music hybrid, or --music se")
 
     pak = options.pak.expanduser()
-    builder = options.builder.expanduser()
+    patch_data_source = resolve_patch_data_source("mi1", options.builder)
+    patch_data = patch_data_source.data_dir
     out = options.out.expanduser()
-    tools = builder / "tools"
     audio_dir = pak.parent / "audio"
     work = out / ".work"
     extracted = work / "extracted"
@@ -215,11 +215,10 @@ def build(options: BuildOptions) -> None:
     music_work = work / "music"
 
     require_file(pak, "MI1 PAK file")
-    require_dir(builder, "MI1 Ultimate Talkie builder directory")
-    require_dir(tools, "MI1 builder tools directory")
-    require_file(tools / "patch10.000", "MI1 patch file")
-    require_file(tools / "patch10.001", "MI1 patch file")
-    require_file(tools / "monster.tbl", "MI1 monster table")
+    require_dir(patch_data, "MI1 Ultimate Talkie patch data directory")
+    require_file(patch_data / "patch10.000", "MI1 patch file")
+    require_file(patch_data / "patch10.001", "MI1 patch file")
+    require_file(patch_data / "monster.tbl", "MI1 monster table")
     require_file(audio_dir / "Speech.xwb", "MI1 Special Edition Speech.xwb")
     require_file(audio_dir / "SFXNew.xwb", "MI1 Special Edition SFXNew.xwb")
     require_file(EXTRACTPAK, "compiled extractpak helper")
@@ -231,7 +230,7 @@ def build(options: BuildOptions) -> None:
 
     runner.log("Monkey Island 1 Ultimate Talkie native helper")
     runner.log(f"pak:     {pak}")
-    runner.log(f"builder patch data: {builder}")
+    runner.log(f"patch data: {patch_data_source.root} ({patch_data_source.label})")
     runner.log(f"out:     {out}")
     runner.log(f"audio:   {options.audio}")
     runner.log(f"music:   {options.music}")
@@ -247,12 +246,12 @@ def build(options: BuildOptions) -> None:
         runner.log("6. Inject SBL sound effects unless --skip-sbl is set.")
         runner.log(f"7. Convert music unless --skip-music is set; root mode: {options.music}.")
         runner.log("")
-        runner.log(format_dependency_report("mi1", builder))
+        runner.log(format_dependency_report("mi1", options.builder))
         runner.clean_dir(out)
         return
 
     try:
-        monster.validate_table_for_game(tools / "monster.tbl", "mi1")
+        monster.validate_table_for_game(patch_data / "monster.tbl", "mi1")
     except monster.MonsterError as error:
         raise BuildError(f"invalid MI1 monster table: {error}") from error
 
@@ -266,8 +265,8 @@ def build(options: BuildOptions) -> None:
     require_file(src001, "extracted MI1 classic resource")
     _stage_done(progress, "Extracting PAK assets")
     _stage(runner, progress, 2, 7, "Applying Ultimate Talkie patches")
-    runner.run(["bspatch", src000, out / "monkey.000", tools / "patch10.000"])
-    runner.run(["bspatch", src001, out / "monkey.001", tools / "patch10.001"])
+    runner.run(["bspatch", src000, out / "monkey.000", patch_data / "patch10.000"])
+    runner.run(["bspatch", src001, out / "monkey.001", patch_data / "patch10.001"])
     _stage_done(progress, "Applying Ultimate Talkie patches")
 
     speech_wav.mkdir(parents=True, exist_ok=True)
@@ -303,7 +302,7 @@ def build(options: BuildOptions) -> None:
     _stage(runner, progress, 4, 7, "Extracting and encoding voices")
     voices.process_mi1_voices(
         voices.Mi1VoiceOptions(
-            builder=builder,
+            patch_data=patch_data,
             speech_wav=speech_wav,
             sfx_wav=sfx_wav,
             out=processed,
@@ -318,7 +317,7 @@ def build(options: BuildOptions) -> None:
     _stage(runner, progress, 5, 7, "Building speech archive")
     try:
         monster_summary = monster.build_monster_archive(
-            tools / "monster.tbl",
+            patch_data / "monster.tbl",
             processed / f"final-{options.audio}",
             archive,
             options.audio,
@@ -334,7 +333,7 @@ def build(options: BuildOptions) -> None:
         _stage(runner, progress, 6, 7, "Injecting SBL resources")
         try:
             injected = mi1_sbl.inject_mi1_sbl(
-                builder,
+                patch_data,
                 processed / "samples-wav",
                 out / "monkey.000",
                 out / "monkey.001",
@@ -374,7 +373,7 @@ def build(options: BuildOptions) -> None:
         game="mi1",
         out=out,
         pak=pak,
-        builder=builder,
+        patch_data_source=patch_data_source.root,
         audio=options.audio,
         music=options.music,
         extra_options=[

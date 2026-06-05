@@ -1,15 +1,15 @@
 # Builder Independence Roadmap
 
 SCUMMKit no longer depends on the original Windows builder executables or batch
-files for the validated native build paths, but it still depends on authored
-data shipped inside the Ultimate Talkie Edition builder folders. This note
-describes the dependency boundary, what has already been replaced, and why full
-patch-data replacement is not the immediate milestone.
+files for the validated native build paths. It includes the small authored
+Ultimate Talkie patch/table data set with permission from the original builder
+author. This note describes the dependency boundary, what has already been
+replaced, and why full patch-data regeneration is not the immediate milestone.
 
 ## Current Position
 
-The practical goal is now **minimize and audit builder data dependencies**, not
-promise full builder independence in the near term.
+The practical goal is now **native build independence from the Windows builder
+package**, not complete reauthoring of every Ultimate Talkie patch-data file.
 
 SCUMMKit can replace the builder's orchestration and several helper recipes
 natively:
@@ -22,35 +22,38 @@ natively:
   readme;
 - native MI1 SBL command data and injection.
 
-SCUMMKit still requires the Ultimate Talkie patch data that changes the classic
-SCUMM game resources and binds those resources to speech archive IDs. Local
-analysis found no source project or generator for those files in the shipped
-builders. Replacing them would require reauthoring or faithfully reproducing a
-large set of SCUMM resource, script, sound, and table changes.
+SCUMMKit still uses the Ultimate Talkie patch data that changes the classic
+SCUMM game resources and binds those resources to speech archive IDs. The
+original author confirmed that `monster.tbl` was built with internal tools that
+were not optimized for later changes. Replacing these files would require
+reauthoring or faithfully reproducing a large set of SCUMM resource, script,
+sound, and table changes.
 
 ## Current Builder Inputs
 
-MI1 currently reads these files from `MI1_Ultimate_Talkie_Edition_Builder/`:
+MI1 reads these files from `third_party/ultimate-talkie/mi1/` by default:
 
-- `tools/patch10.000`
-- `tools/patch10.001`
-- `tools/monster.tbl`
+- `patch10.000`
+- `patch10.001`
+- `monster.tbl`
 
-MI2 currently reads these files from `MI2_Ultimate_Talkie_Edition_Builder/`:
+MI2 reads these files from `third_party/ultimate-talkie/mi2/` by default:
 
-- `tools/patch02.000`
-- `tools/patch02.001`
-- `tools/monster.tbl`
+- `patch02.000`
+- `patch02.001`
+- `monster.tbl`
 
 The Windows-only tools and batch scripts from the builders are not used by the
-main Python build pipelines. The remaining dependency is therefore authored
-patch data:
+main Python build pipelines. `--builder` remains as an optional compatibility
+input if a developer wants to use a local original builder folder instead of
+the bundled third-party data. The remaining authored data is:
 
 - binary patches for the extracted classic SCUMM resource files;
 - `monster.tbl` speech archive maps;
 
 The `scummkit builder-inputs mi1` and `scummkit builder-inputs mi2` commands
-report this reduced dependency set.
+report the bundled/default data source, or a local original builder source when
+`--builder` is supplied.
 
 ## Licensing And Redistribution
 
@@ -111,23 +114,24 @@ builder-derived data, it should keep that data clearly separated from the MIT
 code, preserve the upstream license/credits, and document that the redistributed
 patch data is for non-commercial use only.
 
-For MI1, the readme permits redistributing the patch free of charge for
-non-commercial use, but the package-specific license text still says authored
-files may not be separated from the package without the author's agreement. That
-means SCUMMKit should not extract and vendor individual files such as
-`monster.tbl`, `patch10.000`, or `sbl.bat` unless permission is granted. For
-MI2, redistribution of the patch appears to be permitted by the builder readme,
-but only under the readme's non-commercial terms and only for the patch, not
-generated game output. The audited MI2 builder folder did not contain a separate
-`licenses/This Package.txt` equivalent.
+The original author has now granted permission to use the authored patch/table
+files in SCUMMKit under the original package terms, with attribution to the
+original patch and a note that the files are used with permission. SCUMMKit
+therefore vendors only the minimal patch/table data set under
+`third_party/ultimate-talkie/`, keeps the original package license text in
+`licenses/original_ute_builder.txt`, and does not include generated game output
+or any files from the commercial Special Edition games.
 
 ## Where `monster.tbl` Comes From
 
-In the current native pipeline, `monster.tbl` comes directly from the original
-Ultimate Talkie builder folder:
+In the current native pipeline, `monster.tbl` comes from the vendored
+third-party Ultimate Talkie patch data:
 
-- MI1: `MI1_Ultimate_Talkie_Edition_Builder/tools/monster.tbl`
-- MI2: `MI2_Ultimate_Talkie_Edition_Builder/tools/monster.tbl`
+- MI1: `third_party/ultimate-talkie/mi1/monster.tbl`
+- MI2: `third_party/ultimate-talkie/mi2/monster.tbl`
+
+When `--builder` is supplied, SCUMMKit can still read the table from the
+matching local original builder folder instead.
 
 SCUMMKit does not generate these tables today. It parses them and uses them as
 the speech archive manifest.
@@ -151,9 +155,10 @@ Known observed table sizes:
 - MI2: 6808 lines / 6808 unique original offsets / 6808 unique sample basenames.
 
 The upstream process used to create `monster.tbl` is not included in SCUMMKit.
-The tables appear to be part of the Ultimate Talkie builder's authored patch
-data: they bridge patched SCUMM resource offsets to extracted Special Edition
-speech sample names.
+The original author confirmed that the tables were built with internal tools
+and that he would likely approach the tooling differently today. The tables are
+part of the Ultimate Talkie builder's authored patch data: they bridge patched
+SCUMM resource offsets to extracted Special Edition speech sample names.
 
 The local builder audit found no batch script that generates `monster.tbl` or
 the SCUMM binary patch files. The install scripts consume them as static files:
@@ -295,9 +300,10 @@ example:
 ```
 
 For validation, SCUMMKit can export a temporary `monster.tbl`-compatible view
-from the generated manifest and compare it against a user-provided builder
-`tools/monster.tbl`. Once the generated view matches, the build can use the
-manifest directly and stop requiring the builder's table.
+from a generated manifest and compare it against the vendored
+`third_party/ultimate-talkie/*/monster.tbl` files. If a generated view ever
+matches, the build could use the manifest directly and stop requiring the
+authored table.
 
 ## Replacement Strategy
 
@@ -315,22 +321,18 @@ The MI1 injector can still compare native SBL data against a local builder
 `tools/sbl.bat` for developer validation, but the build path no longer requires
 that batch file.
 
-### 2. Audit `monster.tbl` Inputs
+### 2. Vendor The Minimal Patch/Table Data
 
-Do not vendor the original MI1 table without permission, because the MI1 license
-says authored files may not be separated from the package without agreement. For
-MI2, the builder readme appears to permit patch redistribution for
-non-commercial use, but that data should still be separated from MIT-licensed
-code and carry the upstream license/credits. Prefer one of these paths:
+Completed:
 
-- generate the tables from documented patch metadata and resource analysis if a
-  complete native resource patcher exists;
-- add an importer that converts a user-provided builder `monster.tbl` into a
-  local cache outside the repository;
-- request explicit permission from the Ultimate Talkie author to redistribute
-  the minimal tables under terms compatible with the project;
-- keep `--builder` as a compatibility source until native generation is
-  complete.
+- `third_party/ultimate-talkie/mi1/` carries `patch10.000`, `patch10.001`, and
+  `monster.tbl`.
+- `third_party/ultimate-talkie/mi2/` carries `patch02.000`, `patch02.001`, and
+  `monster.tbl`.
+- `licenses/original_ute_builder.txt` preserves the original package license
+  text.
+- `--builder` remains optional and can still point at a local original builder
+  folder for compatibility or comparison.
 
 The current MI1 speech manifest prototype can generate a builder-coverage view
 of sample names from Special Edition `speech.info` plus classified special
@@ -383,27 +385,22 @@ python3 -m scummkit build mi1 --pak ~/Downloads/MonkeyIsland/Monkey1.pak --out /
 python3 -m scummkit build mi2 --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak --out /tmp/mi2 --audio ogg
 ```
 
-For now, keep builder compatibility as an explicit input source:
+The current CLI already supports that flow by default. `--builder` remains as
+an optional override:
 
 ```bash
-python3 -m scummkit build mi2 --pak ... --builder ... --patch-source builder
+python3 -m scummkit build mi2 --pak ... --out ... --audio ogg
+python3 -m scummkit build mi2 --pak ... --builder ~/Downloads/MI2_Ultimate_Talkie_Edition_Builder --out ... --audio ogg
 ```
 
-or:
-
-```bash
-python3 -m scummkit build mi2 --pak ... --legacy-builder ...
-```
-
-Only remove `--builder` once replacement patch and table generation is validated
-against existing known-good builds. Until then, `--builder` means "read local
-Ultimate Talkie patch data from this folder", not "run the Windows builder".
+When supplied, `--builder` means "read local Ultimate Talkie patch data from
+this folder", not "run the Windows builder".
 
 ## Recommended Next Work
 
-1. Keep README and CLI diagnostics explicit that builder patch data is still
-   required.
-2. Add or tighten `monster.tbl` validation diagnostics so bad builder inputs
+1. Keep README and CLI diagnostics explicit that bundled Ultimate Talkie
+   patch/table data is third-party data used with permission.
+2. Add or tighten `monster.tbl` validation diagnostics so bad patch data inputs
    fail early with clear row-count, duplicate, and missing-sample messages.
 3. Preserve the MI1 patch-diff and sound-plan tooling as developer analysis
    commands, not required build steps.

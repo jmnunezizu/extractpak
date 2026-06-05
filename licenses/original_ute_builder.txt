@@ -1,0 +1,29 @@
+The following files were written and/or created by LogicDeLuxe exclusively for the Monkey Island Ultimate Talkie Edition Patch:
+
+In the main folder:
+extended_SE_tracks_to_game_folder.bat
+install.bat
+install_flac.bat
+install_ogg.bat
+readme.txt
+
+In the tools folder:
+build_monster.exe
+cdaudio.bat
+flac.bat
+monster.tbl
+mp3.bat
+ogg.bat
+patch05.ex_
+patch05.im_
+patch10.000
+patch10.001
+sbl.bat
+voice.bat
+wav.bat
+wav2sbl.exe
+_cdt_silence
+
+These files are released as is. No waranties are given. You use them at your own risk.
+They may be distributed free of charge for non comercial purpose.
+They may not be separated from this package without my agreement.

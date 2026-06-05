@@ -61,7 +61,7 @@ MI1_SPECIAL_CASE_OUTPUTS = frozenset(
 
 @dataclass
 class Mi1VoiceOptions:
-    builder: Path
+    patch_data: Path
     speech_wav: Path
     sfx_wav: Path
     out: Path
@@ -73,7 +73,7 @@ class Mi1VoiceOptions:
 
 @dataclass
 class Mi2VoiceOptions:
-    builder: Path
+    patch_data: Path
     speech_wav: Path
     patch_wav: Path
     out: Path
@@ -318,14 +318,12 @@ def _write_coverage(out: Path, refs: set[str], samples: set[str]) -> tuple[int, 
 
 def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     runner = Runner(options.dry_run, options.verbose, options.quiet)
-    builder = options.builder.expanduser()
-    tools = builder / "tools"
+    patch_data = options.patch_data.expanduser()
     samples = options.out.expanduser() / "samples-wav"
     temp = options.out.expanduser() / "tmp"
     final = options.out.expanduser() / f"final-{options.audio}"
-    require_dir(builder, "MI1 Ultimate Talkie builder directory")
-    require_dir(tools, "MI1 builder tools directory")
-    require_file(tools / "monster.tbl", "MI1 monster table")
+    require_dir(patch_data, "MI1 Ultimate Talkie patch data directory")
+    require_file(patch_data / "monster.tbl", "MI1 monster table")
     require_dir(options.speech_wav, "MI1 extracted speech WAV directory")
     require_dir(options.sfx_wav, "MI1 extracted SFX WAV directory")
     require_file(options.speech_wav / "STN_59_stans_89_1.wav", "MI1 Speech.xwb extracted sample")
@@ -354,7 +352,7 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     _encode_samples(runner, samples, final, options.audio)
     ext = final_ext(options.audio)
     processed_count = count_files(final, f"*.{ext}")
-    refs = _monster_ref_names(tools / "monster.tbl")
+    refs = _monster_ref_names(patch_data / "monster.tbl")
     available = {p.stem for p in final.glob(f"*.{ext}")}
     missing_count, unreferenced_count = _write_coverage(options.out, refs, available)
     runner.log("")
@@ -377,14 +375,12 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
 
 def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     runner = Runner(options.dry_run, options.verbose, options.quiet)
-    builder = options.builder.expanduser()
-    tools = builder / "tools"
+    patch_data = options.patch_data.expanduser()
     samples = options.out.expanduser() / "samples-wav"
     temp = options.out.expanduser() / "tmp"
     final = options.out.expanduser() / f"final-{options.audio}"
-    require_dir(builder, "MI2 Ultimate Talkie builder directory")
-    require_dir(tools, "MI2 builder tools directory")
-    require_file(tools / "monster.tbl", "MI2 monster table")
+    require_dir(patch_data, "MI2 Ultimate Talkie patch data directory")
+    require_file(patch_data / "monster.tbl", "MI2 monster table")
     require_dir(options.speech_wav, "MI2 extracted speech WAV directory")
     require_dir(options.patch_wav, "MI2 extracted patch WAV directory")
     require_file(options.speech_wav / "00000000.wav", "MI2 Speech.xwb extracted sample")
@@ -415,7 +411,7 @@ def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     _encode_samples(runner, samples, final, options.audio)
     ext = final_ext(options.audio)
     processed_count = count_files(final, f"*.{ext}")
-    expected_count = len(_monster_ref_names(tools / "monster.tbl"))
+    expected_count = len(_monster_ref_names(patch_data / "monster.tbl"))
     runner.log("")
     runner.log("Voice processing complete.")
     runner.log(f"Normalized WAV files: {normalized_count}")
