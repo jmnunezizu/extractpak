@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import argparse
 
-from .commands import build, doctor, inspect, monster, sbl, xwb
+from .commands import build, bsdiff_inspect, builder_inputs, doctor, inspect, monster, patch_diff, sbl, speech_manifest, xwb
 from .runner import BuildError
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="scummkit")
     sub = parser.add_subparsers(dest="command", required=True)
+    bsdiff_inspect.register(sub)
     build.register(sub)
+    builder_inputs.register(sub)
     doctor.register(sub)
+    patch_diff.register(sub)
     xwb.register(sub)
     monster.register(sub)
+    speech_manifest.register(sub)
     sbl.register_wav2sbl(sub)
     sbl.register_inject(sub)
     inspect.register(sub)

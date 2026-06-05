@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import monster, voices, xwb
 from .audio import count_files, require_audio_tools
+from .builder_inputs import format_dependency_report, write_build_note
 from .paths import EXTRACTPAK
 from .progress import BuildProgress
 from .runner import BuildError, Runner, require_dir, require_file
@@ -69,7 +69,6 @@ def build(options: BuildOptions) -> None:
     require_file(pak, "MI2 PAK file")
     require_dir(builder, "MI2 Ultimate Talkie builder directory")
     require_dir(tools, "MI2 builder tools directory")
-    require_file(builder / "readme.txt", "MI2 builder readme")
     require_file(tools / "patch02.000", "MI2 patch file")
     require_file(tools / "patch02.001", "MI2 patch file")
     require_file(tools / "monster.tbl", "MI2 monster table")
@@ -81,7 +80,7 @@ def build(options: BuildOptions) -> None:
 
     runner.log("Monkey Island 2 Ultimate Talkie native helper")
     runner.log(f"pak:     {pak}")
-    runner.log(f"builder: {builder}")
+    runner.log(f"builder patch data: {builder}")
     runner.log(f"out:     {out}")
     runner.log(f"audio:   {options.audio}")
 
@@ -94,9 +93,16 @@ def build(options: BuildOptions) -> None:
         runner.log("4. Extract WAV files from Speech.xwb and Patch.xwb.")
         runner.log("5. Process voice.bat samples and encode audio.")
         runner.log("6. Build the ScummVM speech archive.")
-        runner.log("7. Copy builder readme.")
+        runner.log("7. Write SCUMMKit build note.")
+        runner.log("")
+        runner.log(format_dependency_report("mi2", builder))
         runner.clean_dir(out)
         return
+
+    try:
+        monster.validate_table_for_game(tools / "monster.tbl", "mi2")
+    except monster.MonsterError as error:
+        raise BuildError(f"invalid MI2 monster table: {error}") from error
 
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
@@ -171,13 +177,13 @@ def build(options: BuildOptions) -> None:
     except monster.MonsterError as error:
         raise BuildError(f"failed to build MI2 speech archive: {error}") from error
     _stage_done(progress, "Building speech archive")
-    shutil.copy2(builder / "readme.txt", out / "readme.txt")
+    build_note = write_build_note(game="mi2", out=out, pak=pak, builder=builder, audio=options.audio)
 
     print_build_summary(
         BuildSummary(
             game="Monkey Island 2: LeChuck's Revenge",
             out=out,
-            generated_files=[out / "monkey2.000", out / "monkey2.001", archive, out / "readme.txt"],
+            generated_files=[out / "monkey2.000", out / "monkey2.001", archive, build_note],
             speech_archive_entries=monster_summary.packed,
             missing_samples=monster_summary.missing,
             audio=options.audio,

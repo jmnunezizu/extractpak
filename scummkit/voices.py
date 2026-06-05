@@ -1,13 +1,62 @@
 from __future__ import annotations
 
-import shutil
 import time
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import monster
 from .audio import count_files, encode_wav, probe_some, require_audio_tools
 from .runner import BuildError, Runner, require_dir, require_file
+
+MI1_SPECIAL_CASE_OUTPUTS = frozenset(
+    [
+        "_cdt_silence",
+        "_cdt_you_could",
+        "_cdt_10000",
+        "_cdt_9000",
+        "_cdt_8000",
+        "_cdt_7000",
+        "_cdt_6000",
+        "_cdt_5000",
+        "_cdt_4000",
+        "_cdt_3000",
+        "_cdt_900",
+        "_cdt_800",
+        "_cdt_700",
+        "_cdt_600",
+        "_cdt_500",
+        "_cdt_400",
+        "_cdt_300",
+        "_cdt_200",
+        "_cdt_100",
+        "_cdt_n50",
+        "_cdt_pieces",
+        "_cdt_bride",
+        "_cdt_machine",
+        "_cdt_psssst",
+        "_cdt_eatya",
+        "_cdt_ht",
+        "_cdt_dooropen",
+        "_cdt_doorclose",
+        "_cdt_bubble",
+        "_cdt_guykick1",
+        "_cdt_stankick",
+        "_cdt_shredder",
+        "_cdt_hit01",
+        "_cdt_hit02",
+        "_cdt_hit03",
+        "_cdt_hit04",
+        "_cdt_hit05",
+        "_cdt_hit06",
+        "_cdt_hit07",
+        "_cdt_hit08",
+        "_cdt_hit09",
+        "_cdt_hit10",
+        "_cdt_jamrum",
+        "_cdt_rumjam",
+    ]
+)
 
 
 @dataclass
@@ -42,15 +91,15 @@ def plan_voice_steps(game: str, audio: str) -> list[str]:
     if game == "mi1":
         return [
             "Normalize Speech.xwb and SFXNew.xwb WAV files into samples-wav/.",
-            "Copy _cdt_silence and create voice.bat special-case _cdt_*.wav files with SoX.",
+            "Generate _cdt_silence.wav and create voice.bat special-case _cdt_*.wav files with SoX.",
             "Replace TRL_57_bridge_16_2.wav and GUY_20_main-beach_71_3.wav as voice.bat does.",
             f"Convert samples to {audio} files in final-{audio}/.",
-            "Stop before sbl.bat and cdaudio.bat.",
+            "Stop before native SBL injection and cdaudio.bat-compatible music processing.",
         ]
     if game == "mi2":
         return [
             "Normalize Speech.xwb and Patch.xwb WAV files into samples-wav/.",
-            "Create voice.bat special-case _cdt_*.wav files with SoX.",
+            "Generate _cdt_silence.wav and create voice.bat special-case _cdt_*.wav files with SoX.",
             f"Convert samples to {audio} files in final-{audio}/.",
             "Stop before build_monster archive generation.",
         ]
@@ -119,13 +168,21 @@ def _mix_compand(runner: Runner, samples: Path, src1: str, src2: str, dst: str, 
     runner.run(["sox", _sample(samples, src1), _sample(samples, src2), "-m", "-D", "-c", "1", "-t", "wav", "-V0", _sample(samples, dst), "compand", "0.0,0.5", curve, gain, "-99"])
 
 
-def _copy_silence(runner: Runner, tools: Path, samples: Path) -> None:
+def _write_cdt_silence(path: Path) -> None:
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(1)
+        wav.setframerate(22050)
+        wav.writeframes(bytes([128]) * 220)
+
+
+def _copy_silence(runner: Runner, samples: Path) -> None:
     if runner.verbose:
-        runner.log("copy _cdt_silence -> _cdt_silence.wav")
+        runner.log("generate _cdt_silence.wav")
     if runner.dry_run:
-        runner.log(f"[dry-run] cp {tools / '_cdt_silence'} {samples / '_cdt_silence.wav'}")
+        runner.log(f"[dry-run] generate {samples / '_cdt_silence.wav'}")
     else:
-        shutil.copy2(tools / "_cdt_silence", samples / "_cdt_silence.wav")
+        _write_cdt_silence(samples / "_cdt_silence.wav")
 
 
 def _replace(path: Path, source: Path) -> None:
@@ -133,8 +190,8 @@ def _replace(path: Path, source: Path) -> None:
     source.replace(path)
 
 
-def _make_mi1_special_cases(runner: Runner, tools: Path, samples: Path, temp: Path) -> None:
-    _copy_silence(runner, tools, samples)
+def _make_mi1_special_cases(runner: Runner, samples: Path, temp: Path) -> None:
+    _copy_silence(runner, samples)
     for src, dst, start, length in [
         ("STN_59_stans_89_1.wav", "_cdt_you_could.wav", "0.000", "3.375"),
         ("STN_59_stans_76_1.wav", "_cdt_10000.wav", "3.002", "0.962"),
@@ -195,7 +252,7 @@ def _make_mi1_special_cases(runner: Runner, tools: Path, samples: Path, temp: Pa
             (temp / "temp.wav").unlink(missing_ok=True)
 
 
-def _make_mi2_special_cases(runner: Runner, tools: Path, samples: Path, temp: Path) -> None:
+def _make_mi2_special_cases(runner: Runner, samples: Path, temp: Path) -> None:
     require_file(_sample(samples, "000003d5.wav"))
     require_file(_sample(samples, "vx112_DemBones_SE_nl_1.wav"))
     require_file(_sample(samples, "vx112_DemBones_SE_nl_2.wav"))
@@ -223,7 +280,7 @@ def _make_mi2_special_cases(runner: Runner, tools: Path, samples: Path, temp: Pa
         ("vx112_DemBones_SE_nl_1.wav", "_cdt_rip_con2.wav", "14.655", "2.009"),
     ]:
         _trim(runner, samples, src, dst, start, length)
-    _copy_silence(runner, tools, samples)
+    _copy_silence(runner, samples)
     if not runner.dry_run and not runner.verbose:
         (temp / "temp1.wav").unlink(missing_ok=True)
         (temp / "temp2.wav").unlink(missing_ok=True)
@@ -268,7 +325,6 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     final = options.out.expanduser() / f"final-{options.audio}"
     require_dir(builder, "MI1 Ultimate Talkie builder directory")
     require_dir(tools, "MI1 builder tools directory")
-    require_file(tools / "_cdt_silence", "MI1 voice helper sample")
     require_file(tools / "monster.tbl", "MI1 monster table")
     require_dir(options.speech_wav, "MI1 extracted speech WAV directory")
     require_dir(options.sfx_wav, "MI1 extracted SFX WAV directory")
@@ -293,7 +349,7 @@ def process_mi1_voices(options: Mi1VoiceOptions) -> Path:
     runner.log("  applying voice.bat special cases...")
     if runner.quiet:
         runner.status("  voices: applying MI1 voice.bat special cases")
-    _make_mi1_special_cases(runner, tools, samples, temp)
+    _make_mi1_special_cases(runner, samples, temp)
     sample_count = count_files(samples, "*.wav")
     _encode_samples(runner, samples, final, options.audio)
     ext = final_ext(options.audio)
@@ -328,7 +384,6 @@ def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     final = options.out.expanduser() / f"final-{options.audio}"
     require_dir(builder, "MI2 Ultimate Talkie builder directory")
     require_dir(tools, "MI2 builder tools directory")
-    require_file(tools / "_cdt_silence", "MI2 voice helper sample")
     require_file(tools / "monster.tbl", "MI2 monster table")
     require_dir(options.speech_wav, "MI2 extracted speech WAV directory")
     require_dir(options.patch_wav, "MI2 extracted patch WAV directory")
@@ -355,7 +410,7 @@ def process_mi2_voices(options: Mi2VoiceOptions) -> Path:
     runner.log("  applying voice.bat special cases...")
     if runner.quiet:
         runner.status("  voices: applying MI2 voice.bat special cases")
-    _make_mi2_special_cases(runner, tools, samples, temp)
+    _make_mi2_special_cases(runner, samples, temp)
     sample_count = count_files(samples, "*.wav")
     _encode_samples(runner, samples, final, options.audio)
     ext = final_ext(options.audio)
