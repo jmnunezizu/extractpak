@@ -429,6 +429,114 @@ Ambience bank handling:
 | `AMB_Underwater_01` | WMA bank entry | `.work/music/ambience-wav/AMB_Underwater_01.wav` | `se_music_ogg/track28.ogg`, now also copied to root |
 | `AMB_ShipDeck_01` | 75.836372s | `.work/music/ambience-wav/AMB_ShipDeck_01.wav` | `se_music_ogg/track29.ogg`, now also copied to root |
 
+### Ambience Cue Report
+
+`scummkit ambience-report mi1` parses the Special Edition `AmbienceCues.xsb`
+sound bank and maps room-style cue names to `Ambience.xwb` wave-bank entries
+where the current lightweight XACT parser can resolve the simple sound record.
+
+Example:
+
+```bash
+python3 -m scummkit ambience-report mi1 \
+  --audio-dir ~/Downloads/MonkeyIsland/audio \
+  --filter Mansion
+```
+
+Observed local result:
+
+```text
+36_Mansion               sound=66  wave=14  source=AMB_MeleeMap_01
+53_MansionInside         sound=-   wave=-   source=unmapped
+```
+
+This explains why a full Special Edition root music build can still miss some
+room ambience. SCUMMKit decodes all `Ambience.xwb` entries, but only a subset is
+converted into ScummVM root tracks: the SCUMM Bar mix and the five standalone
+extended ambience tracks. The original Special Edition runtime can trigger XACT
+ambience cues directly; the classic Ultimate Talkie output can only play audio
+that the patched SCUMM resources request through classic sound/music mechanisms.
+
+For the governor mansion exterior, the SE cue exists and resolves to an
+Ambience-bank source that SCUMMKit currently leaves as a decoded work file.
+Simply copying that file into the output root would not make ScummVM play it
+unless the game also requests the corresponding track number. A proper fix needs
+either a native resource/script patch that triggers a chosen track, or a
+confirmed existing classic track request that can be populated safely.
+
+`scummkit room-audio-report mi1` adds the room-side evidence. Against a local
+SE-mode build:
+
+```bash
+python3 -m scummkit room-audio-report mi1 \
+  --game-dir /tmp/mi1-talkie-test2 \
+  --audio-dir ~/Downloads/MonkeyIsland/audio \
+  --room 36
+```
+
+Observed result:
+
+```text
+MI1 room audio report: room 36
+  ambience cue: 36_Mansion -> AMB_MeleeMap_01
+  sounds:
+    SOUN 008 size=3752 tags=SBL ,ADL ,SPK  native_sbl=8_sound_SBL_growl.wav
+  scripts:
+    none
+  embedded room scripts:
+    EXCD#1 offset=30782 size=38 ... audio-opcodes=-
+    ENCD#1 offset=30820 size=99 ... audio-opcodes=startSound(133)@1
+    LSCR#1 offset=30929 size=92 ... audio-opcodes=-
+    LSCR#2 offset=31021 size=781 ... audio-opcodes=-
+    LSCR#3 offset=31802 size=112 ... audio-opcodes=-
+    LSCR#4 offset=31914 size=31 ... audio-opcodes=-
+    LSCR#5 offset=31945 size=138 ... audio-opcodes=-
+  root tracks:
+    present: 29
+```
+
+Room `36_Mansion` has no indexed `SCRP` resources, but it does contain embedded
+room scripts inside the `ROOM` container:
+
+```text
+embedded room scripts:
+  EXCD#1 offset=30782 size=38
+  ENCD#1 offset=30820 size=99
+  LSCR#1 offset=30929 size=92
+  LSCR#2 offset=31021 size=781
+  LSCR#3 offset=31802 size=112
+  LSCR#4 offset=31914 size=31
+  LSCR#5 offset=31945 size=138
+```
+
+Room `53_MansionInside` similarly has no indexed `SCRP` resources, but it has
+embedded `EXCD`, `ENCD`, and `LSCR` chunks plus several event sound resources,
+including native-SBL-covered effects. Its ambience cue is unresolved by the
+lightweight cue report:
+
+```text
+53_MansionInside -> unmapped
+indexed scripts: none
+embedded scripts: present
+decoded audio examples: ENCD#1 startMusic(72), LSCR#7 startMusic(72)
+```
+
+That keeps the current mansion ambience gap in the resource/script-trigger
+category, not the output-file category. The build already contains SE root
+tracks and the mansion event SFX; what remains is identifying whether the
+embedded room bytecode already triggers a classic music/sound mechanism that we
+can populate, or whether SCUMMKit would need a native patch to add such a
+trigger for the continuous SE ambience layer.
+
+The room-audio report now uses a conservative SCUMM v5 bytecode walker for
+`startMusic` and `startSound` instead of raw byte scanning. It skips known
+instruction operands, string speech escapes, and the one-byte `LSCR` local
+script id used by MI1-era room resources. Unsupported opcodes are reported as
+decode issues rather than guessed through. This removed the earlier noisy
+`startMusic` candidates from room `36_Mansion`; the useful current signal is
+that room 36 has a resolved SE ambience cue, but no decoded root-track request
+for it in the parsed embedded scripts.
+
 Pipeline traces:
 
 - SCUMM Bar crowd:

@@ -286,6 +286,7 @@ def test_command_modules_register_public_commands() -> None:
     parser = cli.build_parser()
 
     for argv, expected in [
+        (["ambience-report", "mi1", "--audio-dir", "audio", "--filter", "Mansion"], "ambience-report"),
         (["bsdiff-inspect", "patch10.001"], "bsdiff-inspect"),
         (["build", "mi2", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"], "build"),
         (["builder-inputs", "mi1"], "builder-inputs"),
@@ -309,6 +310,8 @@ def test_command_modules_register_public_commands() -> None:
             ],
             "patch-diff",
         ),
+        (["room-audio-report", "mi1", "--game-dir", "game", "--room", "36"], "room-audio-report"),
+        (["script-reference-report", "mi1", "--game-dir", "game", "--rooms", "36,53"], "script-reference-report"),
         (["inspect", "mi1", "resources", "--game-dir", "game"], "inspect"),
         (["monster", "--verify", "monkey.sog"], "monster"),
         (
