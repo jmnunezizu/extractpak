@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from . import sbl
+from . import mi1_sbl_data, sbl
 
 
 XOR_KEY = 0x69
@@ -37,6 +37,31 @@ class SblCommand:
     room_id: int
     sound_id: int
     sbl_child_index: Optional[int]
+
+
+def native_sbl_commands():
+    return [
+        SblCommand(
+            index=command.index,
+            source=command.source,
+            effects=list(command.effects),
+            target=command.target,
+            room_id=command.room_id,
+            sound_id=command.sound_id,
+            sbl_child_index=command.sbl_child_index,
+        )
+        for command in mi1_sbl_data.MI1_SBL_COMMANDS
+    ]
+
+
+def compare_sbl_commands(left, right):
+    mismatches = []
+    for index, (left_command, right_command) in enumerate(zip(left, right), 1):
+        if left_command != right_command:
+            mismatches.append((index, left_command, right_command))
+    if len(left) != len(right):
+        mismatches.append((0, f"{len(left)} command(s)", f"{len(right)} command(s)"))
+    return mismatches
 
 
 def xor_data(data):
@@ -428,15 +453,12 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def inject_mi1_sbl(builder, samples_wav, monkey000, monkey001, work, sample_rate=22050, verbose=False):
-    sbl_bat = builder / "tools" / "sbl.bat"
-    if not sbl_bat.exists():
-        raise InjectError(f"missing {sbl_bat}")
+def inject_mi1_sbl(builder, samples_wav, monkey000, monkey001, work, sample_rate=22050, verbose=False, commands=None):
     if not samples_wav.is_dir():
         raise InjectError(f"missing samples WAV directory: {samples_wav}")
-    commands = parse_sbl_bat(sbl_bat)
+    commands = native_sbl_commands() if commands is None else commands
 
-    print(f"Parsed {len(commands)} SBL injection commands from {sbl_bat}")
+    print(f"Using {len(commands)} native MI1 SBL injection commands")
     work.mkdir(parents=True, exist_ok=True)
     pre_sbl = work / "pre-sbl"
     pre_sbl.mkdir(parents=True, exist_ok=True)
@@ -483,25 +505,34 @@ def inject_mi1_sbl(builder, samples_wav, monkey000, monkey001, work, sample_rate
 
 def main():
     parser = argparse.ArgumentParser(description="Inject MI1 Ultimate Talkie SBL chunks natively")
-    parser.add_argument("--builder", required=True, type=Path)
+    parser.add_argument("--builder", type=Path, help="optional builder directory for comparing native data with tools/sbl.bat")
     parser.add_argument("--samples-wav", required=True, type=Path)
     parser.add_argument("--monkey000", required=True, type=Path)
     parser.add_argument("--monkey001", required=True, type=Path)
     parser.add_argument("--work", required=True, type=Path)
     parser.add_argument("--sample-rate", type=int, default=22050)
+    parser.add_argument("--compare-builder", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     try:
-        sbl_bat = args.builder / "tools" / "sbl.bat"
-        if not sbl_bat.exists():
-            raise InjectError(f"missing {sbl_bat}")
         if not args.samples_wav.is_dir():
             raise InjectError(f"missing samples WAV directory: {args.samples_wav}")
-        commands = parse_sbl_bat(sbl_bat)
+        commands = native_sbl_commands()
 
-        print(f"Parsed {len(commands)} SBL injection commands from {sbl_bat}")
+        print(f"Using {len(commands)} native MI1 SBL injection commands")
+        if args.compare_builder:
+            if args.builder is None:
+                raise InjectError("--compare-builder requires --builder")
+            sbl_bat = args.builder / "tools" / "sbl.bat"
+            if not sbl_bat.exists():
+                raise InjectError(f"missing {sbl_bat}")
+            parsed = parse_sbl_bat(sbl_bat)
+            mismatches = compare_sbl_commands(commands, parsed)
+            if mismatches:
+                raise InjectError(f"native SBL data differs from {sbl_bat}: {len(mismatches)} mismatch(es)")
+            print(f"Native SBL data matches {sbl_bat}")
         if args.dry_run:
             for command in commands:
                 print(

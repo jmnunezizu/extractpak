@@ -286,10 +286,46 @@ def test_command_modules_register_public_commands() -> None:
     parser = cli.build_parser()
 
     for argv, expected in [
+        (["bsdiff-inspect", "patch10.001"], "bsdiff-inspect"),
         (["build", "mi2", "--pak", "p", "--builder", "b", "--out", "o", "--audio", "ogg"], "build"),
+        (["builder-inputs", "mi1"], "builder-inputs"),
         (["doctor"], "doctor"),
+        (
+            [
+                "patch-diff",
+                "mi1",
+                "--original-index",
+                "monkey1.000",
+                "--original-data",
+                "monkey1.001",
+                "--patched-index",
+                "monkey.000",
+                "--patched-data",
+                "monkey.001",
+                "--classify-out",
+                "classes.json",
+                "--sound-plan-out",
+                "sound-plan.json",
+            ],
+            "patch-diff",
+        ),
         (["inspect", "mi1", "resources", "--game-dir", "game"], "inspect"),
         (["monster", "--verify", "monkey.sog"], "monster"),
+        (
+            [
+                "speech-manifest",
+                "mi1",
+                "--speech-info",
+                "speech.info",
+                "--out",
+                "manifest.json",
+                "--sfxnew",
+                "SFXNew.xwb",
+                "--classify-out",
+                "diff.json",
+            ],
+            "speech-manifest",
+        ),
         (["xwb", "Speech.xwb", "--list"], "xwb"),
         (["wav2sbl", "--verify", "sound.sbl"], "wav2sbl"),
         (
@@ -297,8 +333,6 @@ def test_command_modules_register_public_commands() -> None:
                 "inject",
                 "mi1",
                 "sbl",
-                "--builder",
-                "builder",
                 "--samples-wav",
                 "samples",
                 "--monkey000",
@@ -343,6 +377,23 @@ def test_cli_inject_mi1_sbl_argument_parsing() -> None:
     assert args.builder == Path("builder")
     assert args.dry_run is True
 
+    no_builder_args = parser.parse_args(
+        [
+            "inject",
+            "mi1",
+            "sbl",
+            "--samples-wav",
+            "samples",
+            "--monkey000",
+            "monkey.000",
+            "--monkey001",
+            "monkey.001",
+            "--work",
+            "work",
+        ]
+    )
+    assert no_builder_args.builder is None
+
 
 def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -> None:
     from scummkit import mi2
@@ -357,7 +408,6 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
     pak.write_bytes(b"pak")
     extractpak = tmp_path / "extractpak"
     extractpak.write_bytes(b"extractpak")
-    (builder / "readme.txt").write_text("readme")
     for name in ("patch02.000", "patch02.001", "monster.tbl"):
         (tools / name).write_bytes(b"patch")
     for name in ("Speech.xwb", "Patch.xwb"):
@@ -373,6 +423,42 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
     assert not (out / "monkey2.sog").exists()
 
 
+def test_builder_inputs_report_excludes_removed_helper_files(tmp_path: Path) -> None:
+    from scummkit.builder_inputs import format_dependency_report
+
+    builder = tmp_path / "builder"
+    (builder / "tools").mkdir(parents=True)
+    (builder / "tools" / "patch02.000").write_bytes(b"patch")
+
+    report = format_dependency_report("mi2", builder)
+
+    assert "tools/patch02.000" in report
+    assert "tools/monster.tbl" in report
+    assert "readme.txt" not in report
+    assert "sbl.bat" not in format_dependency_report("mi1", builder)
+    assert "_cdt_silence" in report
+    assert "No builder readme or _cdt_silence helper sample is required" in report
+
+
+def test_write_build_note_uses_scummkit_note_name(tmp_path: Path, monkeypatch) -> None:
+    from scummkit import builder_inputs
+
+    monkeypatch.setattr(builder_inputs, "_tool_version", lambda name: f"/bin/{name}")
+
+    note = builder_inputs.write_build_note(
+        game="mi2",
+        out=tmp_path,
+        pak=Path("/games/monkey2.pak"),
+        builder=Path("/builder"),
+        audio="ogg",
+    )
+
+    assert note.name == "SCUMMKIT-BUILD.txt"
+    text = note.read_text(encoding="utf-8")
+    assert "game: mi2" in text
+    assert "Do not redistribute generated game assets" in text
+
+
 def test_voice_processing_plans_without_external_tools() -> None:
     from scummkit import voices
 
@@ -382,6 +468,22 @@ def test_voice_processing_plans_without_external_tools() -> None:
     assert any("SFXNew.xwb" in step for step in mi1_plan)
     assert any("_cdt_*" in step for step in mi2_plan)
     assert any("final-ogg" in step for step in mi1_plan)
+
+
+def test_generated_cdt_silence_matches_builder_helper_shape(tmp_path: Path) -> None:
+    import wave
+
+    from scummkit import voices
+
+    out = tmp_path / "_cdt_silence.wav"
+    voices._write_cdt_silence(out)
+
+    with wave.open(str(out), "rb") as wav:
+        assert wav.getnchannels() == 1
+        assert wav.getsampwidth() == 1
+        assert wav.getframerate() == 22050
+        assert wav.getnframes() == 220
+        assert wav.readframes(220) == bytes([128]) * 220
 
 
 def test_python_code_does_not_reference_shell_scripts() -> None:

@@ -22,12 +22,13 @@ def register_inject(sub: argparse._SubParsersAction[argparse.ArgumentParser]) ->
     inject_mi1 = inject_games.add_parser("mi1", help="MI1 injection helpers")
     inject_mi1_sub = inject_mi1.add_subparsers(dest="inject_action", required=True)
     inject_sbl = inject_mi1_sub.add_parser("sbl", help="inject MI1 SBL sound effects")
-    inject_sbl.add_argument("--builder", required=True, type=Path)
+    inject_sbl.add_argument("--builder", type=Path, help="optional builder directory for comparing native data with tools/sbl.bat")
     inject_sbl.add_argument("--samples-wav", required=True, type=Path)
     inject_sbl.add_argument("--monkey000", required=True, type=Path)
     inject_sbl.add_argument("--monkey001", required=True, type=Path)
     inject_sbl.add_argument("--work", required=True, type=Path)
     inject_sbl.add_argument("--sample-rate", type=int, default=22050)
+    inject_sbl.add_argument("--compare-builder", action="store_true", help="compare native SBL data with builder tools/sbl.bat")
     inject_sbl.add_argument("--dry-run", action="store_true")
     inject_sbl.add_argument("--verbose", action="store_true")
     inject_sbl.set_defaults(func=run_inject_mi1_sbl)
@@ -47,13 +48,21 @@ def run_wav2sbl(parser: argparse.ArgumentParser, args: argparse.Namespace) -> No
 
 def run_inject_mi1_sbl(args: argparse.Namespace) -> None:
     try:
-        sbl_bat = args.builder / "tools" / "sbl.bat"
-        if not sbl_bat.exists():
-            raise mi1_sbl.InjectError(f"missing {sbl_bat}")
         if not args.samples_wav.is_dir():
             raise mi1_sbl.InjectError(f"missing samples WAV directory: {args.samples_wav}")
-        commands = mi1_sbl.parse_sbl_bat(sbl_bat)
-        print(f"Parsed {len(commands)} SBL injection commands from {sbl_bat}")
+        commands = mi1_sbl.native_sbl_commands()
+        print(f"Using {len(commands)} native MI1 SBL injection commands")
+        if args.compare_builder:
+            if args.builder is None:
+                raise mi1_sbl.InjectError("--compare-builder requires --builder")
+            sbl_bat = args.builder / "tools" / "sbl.bat"
+            if not sbl_bat.exists():
+                raise mi1_sbl.InjectError(f"missing {sbl_bat}")
+            parsed = mi1_sbl.parse_sbl_bat(sbl_bat)
+            mismatches = mi1_sbl.compare_sbl_commands(commands, parsed)
+            if mismatches:
+                raise mi1_sbl.InjectError(f"native SBL data differs from {sbl_bat}: {len(mismatches)} mismatch(es)")
+            print(f"Native SBL data matches {sbl_bat}")
         if args.dry_run:
             for command in commands:
                 print(
@@ -69,6 +78,7 @@ def run_inject_mi1_sbl(args: argparse.Namespace) -> None:
             args.work,
             sample_rate=args.sample_rate,
             verbose=args.verbose,
+            commands=commands,
         )
     except (OSError, mi1_sbl.InjectError, sbl.SblError) as error:
         raise BuildError(str(error)) from error

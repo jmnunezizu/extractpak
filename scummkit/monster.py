@@ -48,6 +48,12 @@ class MonsterSummary:
     size: int
 
 
+EXPECTED_TABLE_COUNTS = {
+    "mi1": 4393,
+    "mi2": 6808,
+}
+
+
 def die(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
     raise SystemExit(1)
@@ -68,6 +74,8 @@ def parse_table(path: Path) -> list[tuple[int, str]]:
             except ValueError:
                 die(f"{path}:{line_no}: invalid hex offset: {offset_text!r}")
             name = line[8:]
+            if not name:
+                die(f"{path}:{line_no}: missing sample name")
             if "/" in name or "\\" in name:
                 die(f"{path}:{line_no}: sample name must be a basename: {name!r}")
             entries.append((offset, name))
@@ -76,12 +84,33 @@ def parse_table(path: Path) -> list[tuple[int, str]]:
         die(f"{path}: no monster table entries found")
 
     offsets = [offset for offset, _name in entries]
+    names = [name for _offset, name in entries]
     if offsets != sorted(offsets):
         print("warning: monster table offsets are not sorted; output will preserve table order", file=sys.stderr)
     if len(offsets) != len(set(offsets)):
-        print("warning: monster table contains duplicate original offsets", file=sys.stderr)
+        duplicates = _duplicates(offsets)
+        formatted = ", ".join(f"0x{offset:08x}" for offset in duplicates[:10])
+        suffix = f" and {len(duplicates) - 10} more" if len(duplicates) > 10 else ""
+        die(f"{path}: monster table contains duplicate speech IDs: {formatted}{suffix}")
+    if len(names) != len(set(names)):
+        duplicates = _duplicates(names)
+        formatted = ", ".join(repr(name) for name in duplicates[:10])
+        suffix = f" and {len(duplicates) - 10} more" if len(duplicates) > 10 else ""
+        die(f"{path}: monster table contains duplicate sample names: {formatted}{suffix}")
 
     return entries
+
+
+def _duplicates(values: list[object]) -> list[object]:
+    seen: set[object] = set()
+    duplicates: list[object] = []
+    duplicate_seen: set[object] = set()
+    for value in values:
+        if value in seen and value not in duplicate_seen:
+            duplicates.append(value)
+            duplicate_seen.add(value)
+        seen.add(value)
+    return duplicates
 
 
 def parse_table_or_raise(path: Path) -> list[tuple[int, str]]:
@@ -89,6 +118,17 @@ def parse_table_or_raise(path: Path) -> list[tuple[int, str]]:
         return parse_table(path)
     except SystemExit as error:
         raise MonsterError(f"failed to parse monster table: {path}") from error
+
+
+def validate_table_for_game(path: Path, game: str) -> list[tuple[int, str]]:
+    entries = parse_table_or_raise(path)
+    expected = EXPECTED_TABLE_COUNTS.get(game)
+    if expected is not None and len(entries) != expected:
+        print(
+            f"warning: {game} monster table has {len(entries)} entries; expected {expected} for known builder data",
+            file=sys.stderr,
+        )
+    return entries
 
 
 def sample_files(samples: Path, ext: str) -> dict[str, Path]:
@@ -142,6 +182,10 @@ def _build_archive(
             print(f"warning: missing referenced sample {name}{ext} for offset 0x{offset:08x}", file=sys.stderr)
         if len(missing) > 20:
             print(f"warning: {len(missing) - 20} additional referenced samples are missing", file=sys.stderr)
+        raise MonsterError(
+            f"{len(missing)} referenced sample(s) from {table} are missing in {samples}; "
+            "speech archive would be incomplete"
+        )
 
     if unreferenced:
         for name in unreferenced[:20]:

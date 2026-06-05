@@ -9,6 +9,7 @@ from typing import Optional
 
 from . import mi1_sbl, monster, music as mi1_music, sbl, voices, xwb
 from .audio import count_files, require_audio_tools
+from .builder_inputs import format_dependency_report, write_build_note
 from .mi2 import archive_name
 from .paths import EXTRACTPAK
 from .progress import BuildProgress
@@ -216,7 +217,6 @@ def build(options: BuildOptions) -> None:
     require_file(pak, "MI1 PAK file")
     require_dir(builder, "MI1 Ultimate Talkie builder directory")
     require_dir(tools, "MI1 builder tools directory")
-    require_file(builder / "readme.txt", "MI1 builder readme")
     require_file(tools / "patch10.000", "MI1 patch file")
     require_file(tools / "patch10.001", "MI1 patch file")
     require_file(tools / "monster.tbl", "MI1 monster table")
@@ -231,7 +231,7 @@ def build(options: BuildOptions) -> None:
 
     runner.log("Monkey Island 1 Ultimate Talkie native helper")
     runner.log(f"pak:     {pak}")
-    runner.log(f"builder: {builder}")
+    runner.log(f"builder patch data: {builder}")
     runner.log(f"out:     {out}")
     runner.log(f"audio:   {options.audio}")
     runner.log(f"music:   {options.music}")
@@ -246,8 +246,15 @@ def build(options: BuildOptions) -> None:
         runner.log("5. Process voice.bat samples and build monkey.sog.")
         runner.log("6. Inject SBL sound effects unless --skip-sbl is set.")
         runner.log(f"7. Convert music unless --skip-music is set; root mode: {options.music}.")
+        runner.log("")
+        runner.log(format_dependency_report("mi1", builder))
         runner.clean_dir(out)
         return
+
+    try:
+        monster.validate_table_for_game(tools / "monster.tbl", "mi1")
+    except monster.MonsterError as error:
+        raise BuildError(f"invalid MI1 monster table: {error}") from error
 
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
@@ -363,10 +370,22 @@ def build(options: BuildOptions) -> None:
         _stage(runner, progress, 7, 7, "Skipping music conversion")
         _stage_done(progress, "Skipping music conversion")
 
-    shutil.copy2(builder / "readme.txt", out / "readme.txt")
+    build_note = write_build_note(
+        game="mi1",
+        out=out,
+        pak=pak,
+        builder=builder,
+        audio=options.audio,
+        music=options.music,
+        extra_options=[
+            f"skip_sbl: {options.skip_sbl}",
+            f"skip_music: {options.skip_music}",
+        ],
+    )
     if not options.quiet:
         _print_audio_diagnostics(out, options.audio, options.music, injected)
-    generated = [out / name for name in ("monkey.000", "monkey.001", archive.name, "readme.txt")]
+    generated = [out / name for name in ("monkey.000", "monkey.001", archive.name)]
+    generated.append(build_note)
     if not options.skip_music:
         generated.append(out / "music-root-map.txt")
     print_build_summary(
