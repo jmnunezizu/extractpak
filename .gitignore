@@ -5,4 +5,5 @@ monkey1-classic/
 .DS_Store
 site/node_modules/
 site/dist/
+site/.vite/
 site/tsconfig.tsbuildinfo
