@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -36,6 +36,13 @@ const logoUrl = `${baseUrl}scummkit-logo-web.png`;
 const heroStyle = {
   "--hero-image": `url("${baseUrl}hero-pixel-coastal-archive.png")`,
 } as CSSProperties;
+
+const themes = [
+  { id: "parchment", label: "Parchment" },
+  { id: "harbor", label: "Harbor" },
+  { id: "boxart", label: "Box Art" },
+  { id: "workbench", label: "Workbench" },
+];
 
 const capabilities: Feature[] = [
   {
@@ -100,8 +107,27 @@ const technicalNotes: Feature[] = [
 ];
 
 function App() {
+  const [theme, setTheme] = useState("parchment");
+
   return (
-    <>
+    <div className="siteShell" data-theme={theme}>
+      <aside className="themeLab" aria-label="Theme selector">
+        <span>Theme</span>
+        <div>
+          {themes.map((item) => (
+            <button
+              className={theme === item.id ? "active" : ""}
+              key={item.id}
+              type="button"
+              onClick={() => setTheme(item.id)}
+              aria-pressed={theme === item.id}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </aside>
+
       <header className="hero">
         <div className="heroBackdrop" style={heroStyle} aria-hidden="true" />
         <nav className="nav" aria-label="Primary navigation">
@@ -317,7 +343,7 @@ function App() {
           Contribute on GitHub
         </a>
       </footer>
-    </>
+    </div>
   );
 }
 
