@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/jmnunezizu/scummkit/compare/v0.4.0...v0.4.1) (2026-06-06)
+
+
+### Documentation
+
+* add site badge to README ([#26](https://github.com/jmnunezizu/scummkit/issues/26)) ([1069658](https://github.com/jmnunezizu/scummkit/commit/1069658d29a4a30dccb1755f1ca56e16be8a9e34))
+
 ## [0.4.0](https://github.com/jmnunezizu/scummkit/compare/v0.3.3...v0.4.0) (2026-06-06)
 
 
