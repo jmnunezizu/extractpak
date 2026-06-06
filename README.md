@@ -4,6 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/jmnunezizu/scummkit?sort=semver)](https://github.com/jmnunezizu/scummkit/releases/latest)
 [![CI](https://github.com/jmnunezizu/scummkit/actions/workflows/ci.yml/badge.svg)](https://github.com/jmnunezizu/scummkit/actions/workflows/ci.yml)
+[![Website](https://img.shields.io/badge/website-scummkit-blue)](https://jmnunezizu.github.io/scummkit/)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20WSL-lightgrey)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
