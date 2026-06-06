@@ -4,10 +4,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import monster, voices, xwb
+from . import monster, pak as pak_tools, voices, xwb
 from .audio import count_files, require_audio_tools
 from .builder_inputs import format_dependency_report, resolve_patch_data_source, write_build_note
-from .paths import EXTRACTPAK
 from .progress import BuildProgress
 from .runner import BuildError, Runner, require_dir, require_file
 from .summary import BuildSummary, print_build_summary
@@ -73,7 +72,7 @@ def build(options: BuildOptions) -> None:
     require_file(patch_data / "monster.tbl", "MI2 monster table")
     require_file(audio_dir / "Speech.xwb", "MI2 Special Edition Speech.xwb")
     require_file(audio_dir / "Patch.xwb", "MI2 Special Edition Patch.xwb")
-    require_file(EXTRACTPAK, "compiled extractpak helper")
+    pak_tools.require_extractpak()
     runner.require_tool("bspatch", "install bsdiff/bspatch; macOS usually provides /usr/bin/bspatch")
     require_audio_tools(runner, options.audio)
 
@@ -106,7 +105,7 @@ def build(options: BuildOptions) -> None:
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
     _stage(runner, progress, 1, 5, "Extracting PAK assets")
-    runner.run([EXTRACTPAK, "--only", "classic/en", pak, extracted])
+    pak_tools.extract_classic_en(runner, pak=pak, out=extracted)
     src000 = extracted / "classic/en/monkey2.000"
     src001 = extracted / "classic/en/monkey2.001"
     require_file(src000, "extracted MI2 classic resource")

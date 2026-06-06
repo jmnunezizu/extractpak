@@ -7,11 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from . import mi1_sbl, monster, music as mi1_music, sbl, voices, xwb
+from . import mi1_sbl, monster, music as mi1_music, pak as pak_tools, sbl, voices, xwb
 from .audio import count_files, require_audio_tools
 from .builder_inputs import format_dependency_report, resolve_patch_data_source, write_build_note
 from .mi2 import archive_name
-from .paths import EXTRACTPAK
 from .progress import BuildProgress
 from .runner import BuildError, Runner, require_dir, require_file
 from .summary import BuildSummary, print_build_summary
@@ -221,7 +220,7 @@ def build(options: BuildOptions) -> None:
     require_file(patch_data / "monster.tbl", "MI1 monster table")
     require_file(audio_dir / "Speech.xwb", "MI1 Special Edition Speech.xwb")
     require_file(audio_dir / "SFXNew.xwb", "MI1 Special Edition SFXNew.xwb")
-    require_file(EXTRACTPAK, "compiled extractpak helper")
+    pak_tools.require_extractpak()
     runner.require_tool("bspatch", "install bsdiff/bspatch; macOS usually provides /usr/bin/bspatch")
     runner.require_tool("ffmpeg", "install ffmpeg; it is required to decode WMA entries from SFXNew.xwb")
     if not options.skip_music:
@@ -258,7 +257,7 @@ def build(options: BuildOptions) -> None:
     runner.clean_dir(out)
     extracted.mkdir(parents=True, exist_ok=True)
     _stage(runner, progress, 1, 7, "Extracting PAK assets")
-    runner.run([EXTRACTPAK, "--only", "classic/en", pak, extracted])
+    pak_tools.extract_classic_en(runner, pak=pak, out=extracted)
     src000 = extracted / "classic/en/monkey1.000"
     src001 = extracted / "classic/en/monkey1.001"
     require_file(src000, "extracted MI1 classic resource")

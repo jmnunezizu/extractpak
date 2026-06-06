@@ -2,111 +2,54 @@
 
 # SCUMMKit
 
-Native toolkit for building, inspecting and modifying classic LucasArts SCUMM
-game resources.
+Cross-platform tools for building ScummVM-compatible Monkey Island Ultimate
+Talkie Edition folders from legally owned Special Edition game files.
 
-SCUMMKit is an extraction, inspection, patching, and talkie generation toolkit
-for LucasArts SCUMM games. Its current build pipeline replaces the
-Windows-only Ultimate Talkie batch/executable orchestration with native Python
-and command line tools.
+Point SCUMMKit at your local `Monkey1.pak` or `monkey2.pak`, choose an output
+folder, and it extracts the classic resources, applies the talkie patches,
+processes speech and sound assets, and writes a game directory you can add to
+ScummVM.
 
-It builds ScummVM-compatible Talkie Editions from assets that you already own.
-No game data or generated game output is shipped in this repository. The small
-Ultimate Talkie patch/table data files needed to bind the classic resources to
-speech archives are included with permission from the original builder author
-and kept separate from the MIT-licensed SCUMMKit code under
-`third_party/ultimate-talkie/`. The project automates extraction, patch
-application, audio processing, resource inspection, and resource packing with
-native command line tools and a Python CLI.
+SCUMMKit is designed for macOS, Linux, and Unix-like Windows environments such
+as WSL or MSYS2. It uses Python plus common command line tools, and it does not
+ship commercial game data or generated game output.
 
 Supported games:
 
 - [The Secret of Monkey Island: Special Edition](https://www.gog.com/en/game/the_secret_of_monkey_island_special_edition)
 - [Monkey Island 2 Special Edition: LeChuck's Revenge](https://www.gog.com/en/game/monkey_island_2_special_edition_lechucks_revenge)
 
-## Why SCUMMKit?
+## What It Does
 
-The project started as a Monkey Island PAK extraction experiment and evolved
-into a complete toolkit for building and inspecting SCUMM resources.
-
-The name reflects the broader scope beyond Talkie Edition generation:
-SCUMMKit is intended to be useful for extraction, inspection, patching, and
-resource-building workflows around classic LucasArts SCUMM games.
-
-## Features
-
-- Native PAK extraction for `Monkey1.pak` and `monkey2.pak`
-- Native XACT wave bank (`.xwb`) inspection and extraction
-- Native ScummVM speech archive generation
-- SCUMM resource inspection commands
-- Native replacements for `build_monster.exe`, MI1 `wav2sbl.exe`, and the MI1
-  `scummpacker.exe` SBL injection flow
-- Native MI1 music conversion using `vgmstream-cli` and SoX
-- Native MI1 SBL sound-effect injection
+- Builds local ScummVM-compatible output folders for both supported games.
+- Extracts classic SCUMM resources from Special Edition PAK files.
+- Extracts and converts XACT wave bank (`.xwb`) speech, sound, music, and
+  ambience assets.
+- Packs ScummVM compressed speech archives such as `monkey.sog` and
+  `monkey2.sog`.
+- Injects high-quality SBL sound-effect resources for The Secret of Monkey
+  Island.
+- Converts music for The Secret of Monkey Island and supports `cd`, `hybrid`,
+  and `se` root soundtrack modes.
+- Provides SCUMM resource inspection and diagnostics commands.
 - Python CLI: `python3 -m scummkit` and installed `scummkit`
-- Automated pytest coverage for CLI parsing, monster archive packing, XWB
-  parsing, and SBL generation
-- Fully Python-driven build pipeline; no shell scripts are required
+- Automated pytest coverage for CLI parsing, archive packing, XWB parsing,
+  SBL generation, and build diagnostics.
 
-## Quick Start
+## What You Need
 
-Check your local tools and Python package first:
+- A legally owned copy of one or both supported Special Edition games.
+- Extracted game files, including the `.pak` file and matching `audio/`
+  folder.
+- Python 3.9 or newer.
+- Common command line tools: `sox`, `ffmpeg`, `bspatch`, and `vgmstream-cli`.
+- A compiled local `extractpak` helper.
+- ScummVM to play the generated output folder.
 
-```bash
-python3 -m scummkit doctor --out /tmp/scummkit-test
-```
+You do not need the original Ultimate Talkie builder folder for normal builds.
+SCUMMKit includes the minimal patch/table data with permission.
 
-Build Monkey Island 1:
-
-```bash
-python3 -m scummkit build mi1 \
-  --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
-  --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
-  --audio ogg \
-  --music hybrid
-```
-
-Build Monkey Island 2:
-
-```bash
-python3 -m scummkit build mi2 \
-  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
-  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
-  --audio ogg
-```
-
-Add the generated output folder to ScummVM, not the original Special Edition
-installation folder.
-
-## Ultimate Talkie Patch Data
-
-SCUMMKit does not require the original Windows builder executables or batch
-files for the validated build paths. The orchestration, extraction, audio
-processing, speech archive packing, MI1 silence helper, and MI1 SBL injection
-are implemented natively.
-
-SCUMMKit does still use a small set of authored Ultimate Talkie data files:
-
-- MI1: `third_party/ultimate-talkie/mi1/patch10.000`,
-  `third_party/ultimate-talkie/mi1/patch10.001`, and
-  `third_party/ultimate-talkie/mi1/monster.tbl`.
-- MI2: `third_party/ultimate-talkie/mi2/patch02.000`,
-  `third_party/ultimate-talkie/mi2/patch02.001`, and
-  `third_party/ultimate-talkie/mi2/monster.tbl`.
-
-These files come from the original Ultimate Talkie Edition patch builders by
-LogicDeLuxe and are used with permission. Preserve the original patch credit
-and license terms in `licenses/original_ute_builder.txt` and
-`third_party/ultimate-talkie/README.md`. The patch files encode authored
-changes to classic SCUMM resources, and `monster.tbl` maps the patched game
-resources to speech archive entries.
-
-The `--builder` option is now optional. By default, SCUMMKit reads the bundled
-patch/table data. If you pass `--builder`, SCUMMKit reads the same minimal data
-from a local original builder folder for comparison or compatibility. It still
-does not run the builder's Windows tools.
-
-## Setup
+## Install / Setup
 
 1. Clone the repository:
 
@@ -162,8 +105,7 @@ does not run the builder's Windows tools.
   from Monkey Island Special Edition PAK files.
 - `bspatch`: applies the Ultimate Talkie binary patch files.
 - `ffmpeg`: decodes WMA/XWMA sound-effect entries where needed.
-- `sox`: performs the trim, mix, gain, pad, and audio conversion operations
-  ported from the builder batch files.
+- `sox`: performs trim, mix, gain, pad, and audio conversion operations.
 - `vgmstream-cli`: decodes MI1 XACT music banks correctly.
 - `clang`: optional but recommended; used to compile `extractpak.c`.
 
@@ -189,6 +131,72 @@ It verifies the Python version, required external tools (`ffmpeg`, `sox`,
 optionally whether an output directory can be written. It exits with status `0`
 when all required checks pass and non-zero when any required check fails.
 Use `--json` when you need machine-readable output for scripts or CI probes.
+
+## Quick Start
+
+Check your local tools and Python package first:
+
+```bash
+python3 -m scummkit doctor --out /tmp/scummkit-test
+```
+
+Build Monkey Island 1:
+
+```bash
+python3 -m scummkit build mi1 \
+  --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
+  --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
+  --audio ogg \
+  --music se
+```
+
+Build Monkey Island 2:
+
+```bash
+python3 -m scummkit build mi2 \
+  --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
+  --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
+  --audio ogg
+```
+
+Add the generated output folder to ScummVM, not the original Special Edition
+installation folder.
+
+## CLI Reference
+
+Use `python3 -m scummkit --help` to list commands, and
+`python3 -m scummkit <command> --help` for command-specific options.
+
+| Command | When to use it |
+| ------- | -------------- |
+| `doctor` | Check Python, external tools, local `extractpak`, imports, and optional output-directory write access before starting a build. |
+| `build mi1` / `build mi2` | Generate a complete ScummVM-compatible output folder for a supported game. |
+| `builder-inputs mi1` / `builder-inputs mi2` | Confirm whether SCUMMKit is using bundled Ultimate Talkie patch/table data or data from an optional original builder folder. |
+| `xwb` | Inspect or extract a Special Edition XACT wave bank. Useful when checking whether speech, music, ambience, or sound-effect entries exist in local game assets. |
+| `monster` | Build or verify a ScummVM speech archive from processed samples and `monster.tbl`. Useful for isolating archive packing issues from the full build. |
+| `wav2sbl` | Convert an 8-bit mono PCM WAV file into an MI1 SBL sound-effect chunk, or inspect an existing SBL file. |
+| `inject mi1 sbl` | Inject MI1 SBL sound effects into `monkey.000`/`monkey.001` without running the full MI1 build again. |
+| `inspect mi1 resources` | List indexed MI1 SCUMM resources in a generated output folder. |
+| `inspect mi1 room` | List the scripts, sounds, costumes, and charsets attached to one MI1 room. |
+| `inspect mi1 resource` | Show or dump one indexed MI1 resource for low-level patch/debug work. |
+| `room-audio-report mi1` | Summarise one MI1 room's sound resources, scripts, ambience cues, and root music track references. This is the fastest starting point for missing-room-audio investigations. |
+| `ambience-report mi1` | Map MI1 Special Edition ambience cue names to `Ambience.xwb` entries. Useful when tracing SE ambience coverage. |
+| `script-reference-report mi1` | Scan MI1 scripts for candidate room, sound, or root-track byte references. Useful when a room behaves differently from the expected audio plan. |
+| `speech-manifest mi1` | Generate a manifest from MI1 `speech.info`, optionally compare it with `monster.tbl`, and write a generated table for analysis. |
+| `patch-diff mi1` | Compare original and patched MI1 SCUMM resource files, with optional JSON reports and sound-plan classification. |
+| `bsdiff-inspect` | Inspect a raw BSDIFF40 patch file when debugging patch size, block structure, or provenance. |
+
+Typical troubleshooting flow:
+
+1. Run `doctor` first to rule out missing tools and write-permission issues.
+2. Use `builder-inputs` if a build unexpectedly reads different patch/table
+   data than you intended.
+3. Use `room-audio-report mi1` for missing MI1 music, ambience, or sound
+   effects in a specific room.
+4. Use `inspect mi1 room` or `inspect mi1 resource` when the report points to
+   a specific SCUMM room or resource.
+5. Use `xwb`, `speech-manifest`, `monster`, or `patch-diff` when you need to
+   isolate one asset format or one pipeline stage from the full build.
 
 ## Extracting GOG Installers
 
@@ -222,23 +230,29 @@ MonkeyIsland2/app/audio/
 
 ## Support Matrix
 
-| Area                               | Support level                       | Notes                                                                                                                                                                                                     |
+| Game                               | Build support                       | Notes                                                                                                                                                                                                     |
 | ---------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Secret of Monkey Island        | Ogg validated, bundled UTE data     | Native extraction, speech processing, music conversion, SBL generation/injection, and archive packing. Uses bundled Ultimate Talkie `patch10.*` and `monster.tbl` files with permission. FLAC/MP3/raw are not currently validated for the MI1 build pipeline. |
-| Monkey Island 2: LeChuck's Revenge | Ogg validated, bundled UTE data     | Native extraction, speech processing, and archive packing. Uses bundled Ultimate Talkie `patch02.*` and `monster.tbl` files with permission. FLAC/MP3 use the same compressed archive path when encoders are available. Raw `monster.sou` generation is not implemented. |
-| MI1 music modes                    | `cd`, `hybrid`, `se`    | `hybrid` is the default. `cd` uses classic CD root tracks. `se` uses the full Special Edition root soundtrack.                                                                                            |
-| Build output mode                  | progress, plain, verbose | Progress output is the default and shows a stage bar plus Git-style item counts. `--no-progress` uses plain stage output. `--verbose` prints detailed command and file-level output.                    |
-| Doctor output                      | text, JSON              | `scummkit doctor` prints human-readable checks. `scummkit doctor --json` emits machine-readable check status and details.                                                                                 |
+| The Secret of Monkey Island        | Ogg validated                       | Builds `monkey.000`, `monkey.001`, `monkey.sog`, root music tracks, and MI1 SBL sound-effect resources. Uses bundled Ultimate Talkie `patch10.*` and `monster.tbl` files with permission. |
+| Monkey Island 2: LeChuck's Revenge | Ogg validated                       | Builds `monkey2.000`, `monkey2.001`, and `monkey2.sog`. Uses bundled Ultimate Talkie `patch02.*` and `monster.tbl` files with permission. FLAC/MP3 use the same compressed archive path when encoders are available. |
+
+## Game-Specific Options
+
+| Game | Option | Supported values | Recommended | Notes |
+| ---- | ------ | ---------------- | ----------- | ----- |
+| The Secret of Monkey Island | `--audio` | `ogg` | `ogg` | FLAC/MP3/raw are not currently validated for the MI1 build pipeline. |
+| The Secret of Monkey Island | `--music` | `se`, `hybrid`, `cd` | `se` | `se` uses the full Special Edition soundtrack and ambience path. `hybrid` uses classic CD music plus selected SE ambience tracks. `cd` uses classic CD root tracks. |
+| The Secret of Monkey Island | `--skip-sbl` | flag | off | Skips MI1 high-quality SBL sound-effect injection. |
+| The Secret of Monkey Island | `--skip-music` | flag | off | Skips MI1 music conversion and root soundtrack copying. |
+| Monkey Island 2: LeChuck's Revenge | `--audio` | `ogg`, `flac`, `mp3` | `ogg` | Ogg is the primary validated target. Raw `monster.sou` generation is not implemented. |
 
 ## Building Monkey Island 1
 
 ```bash
 python3 -m scummkit build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
-  --builder ~/Downloads/MI1_Ultimate_Talkie_Edition_Builder \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
-  --music hybrid
+  --music se
 ```
 
 Required inputs:
@@ -259,7 +273,8 @@ Options:
 - `--out PATH`: output folder to create.
 - `--audio ogg|flac|mp3`: target compressed speech format. MI1 is validated
   for `ogg`.
-- `--music cd|hybrid|se`: root soundtrack selection. Default: `hybrid`.
+- `--music cd|hybrid|se`: root soundtrack selection. Use `se` for the fullest
+  Special Edition music and ambience path. CLI default: `hybrid`.
 - `--skip-sbl`: skip native SBL sound-effect injection.
 - `--skip-music`: skip music conversion and root soundtrack copying.
 - `--dry-run`: print planned steps without writing final output.
@@ -281,12 +296,19 @@ music-root-map.txt
 .work/
 ```
 
-### MI1 Music Modes
+### Music Modes
 
 `--music cd`
 
 - Root `track*.ogg` files come only from `cd_music_ogg/`.
 - This is the classic CD soundtrack path.
+
+`--music se` recommended
+
+- Root `track*.ogg` files come from `se_music_ogg/`.
+- This uses the full Special Edition soundtrack.
+- This includes the SCUMM Bar chatter ambience, because the chatter is mixed
+  into the SE `track8.ogg`.
 
 `--music hybrid` default
 
@@ -295,13 +317,6 @@ music-root-map.txt
   output.
 - This preserves the current default behavior and mirrors the original
   builder's optional extended-environment root-track workflow.
-
-`--music se`
-
-- Root `track*.ogg` files come from `se_music_ogg/`.
-- This uses the full Special Edition soundtrack.
-- This includes the SCUMM Bar chatter ambience, because the chatter is mixed
-  into the SE `track8.ogg`.
 
 The original Windows builder generated both `cd_music_ogg/track8.ogg` and
 `se_music_ogg/track8.ogg`. Only the SE version contains the SCUMM Bar chatter
@@ -351,6 +366,28 @@ SCUMMKIT-BUILD.txt
 ```
 
 For FLAC or MP3, the speech archive is named `monkey2.sof` or `monkey2.so3`.
+
+## Bundled Patch Data
+
+SCUMMKit includes the small authored Ultimate Talkie patch/table data set
+needed to bind the classic game resources to the speech archives:
+
+- MI1: `third_party/ultimate-talkie/mi1/patch10.000`,
+  `third_party/ultimate-talkie/mi1/patch10.001`, and
+  `third_party/ultimate-talkie/mi1/monster.tbl`.
+- MI2: `third_party/ultimate-talkie/mi2/patch02.000`,
+  `third_party/ultimate-talkie/mi2/patch02.001`, and
+  `third_party/ultimate-talkie/mi2/monster.tbl`.
+
+These files come from the original Ultimate Talkie Edition patch builders by
+LogicDeLuxe and are used with permission. They are third-party patch data, not
+MIT-licensed SCUMMKit source. Preserve the original patch credit and license
+terms in `licenses/original_ute_builder.txt` and
+`third_party/ultimate-talkie/README.md`.
+
+The `--builder` option is optional. By default, SCUMMKit reads the bundled
+patch/table data. If you pass `--builder`, SCUMMKit reads the same minimal data
+from a local original builder folder for comparison or compatibility.
 
 ## Inspecting Resources
 
@@ -428,9 +465,8 @@ Extraction notes:
 
 ## Reference: How It Works
 
-SCUMMKit replaces a chain of Windows batch files and Windows executables with
-native code and common command line tools. It still consumes the authored
-Ultimate Talkie patch data listed above.
+SCUMMKit runs the build as a Python-driven pipeline around local game assets,
+bundled Ultimate Talkie patch data, and common audio/resource tools.
 
 MI1 pipeline:
 
@@ -518,8 +554,8 @@ PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py sc
 
 This repository started as a modernization of `extractpak.c`, an old utility
 for extracting Monkey Island Special Edition `.pak` archives. It grew into a
-native Python toolchain for building local Ultimate Talkie Edition folders
-without Wine, Windows batch files, or opaque Windows-only executables.
+toolkit for building local Ultimate Talkie Edition folders and inspecting
+classic LucasArts SCUMM resources.
 
 ## Known Limitations
 

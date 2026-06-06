@@ -399,7 +399,7 @@ def test_cli_inject_mi1_sbl_argument_parsing() -> None:
 
 
 def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -> None:
-    from scummkit import mi2
+    from scummkit import mi2, pak as pak_tools
 
     pak = tmp_path / "app" / "monkey2.pak"
     builder = tmp_path / "builder"
@@ -410,7 +410,8 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
     tools.mkdir(parents=True)
     pak.write_bytes(b"pak")
     extractpak = tmp_path / "extractpak"
-    extractpak.write_bytes(b"extractpak")
+    extractpak.write_text("#!/bin/sh\n", encoding="utf-8")
+    extractpak.chmod(0o755)
     for name in ("patch02.000", "patch02.001", "monster.tbl"):
         (tools / name).write_bytes(b"patch")
     for name in ("Speech.xwb", "Patch.xwb"):
@@ -418,7 +419,7 @@ def test_mi2_dry_run_does_not_write_final_outputs(tmp_path: Path, monkeypatch) -
 
     monkeypatch.setattr(Runner, "require_tool", lambda self, name, hint: None)
     monkeypatch.setattr(mi2, "require_audio_tools", lambda runner, audio: None)
-    monkeypatch.setattr(mi2, "EXTRACTPAK", extractpak)
+    monkeypatch.setattr(pak_tools, "EXTRACTPAK", extractpak)
 
     mi2.build(mi2.BuildOptions(pak=pak, builder=builder, out=out, audio="ogg", dry_run=True))
 
