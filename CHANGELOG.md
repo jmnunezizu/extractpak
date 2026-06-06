@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/jmnunezizu/scummkit/compare/v0.3.3...v0.4.0) (2026-06-06)
+
+
+### Features
+
+* add GitHub Pages landing site ([#24](https://github.com/jmnunezizu/scummkit/issues/24)) ([86f923b](https://github.com/jmnunezizu/scummkit/commit/86f923be22893a1f4aad7b45061583c97898aef5))
+
 ## [0.3.3](https://github.com/jmnunezizu/scummkit/compare/v0.3.2...v0.3.3) (2026-06-06)
 
 
