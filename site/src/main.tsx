@@ -63,7 +63,7 @@ const capabilities: Feature[] = [
 const pipeline = [
   { label: "Local game files", detail: "PAK + audio banks", icon: Archive },
   { label: "SCUMMKit build", detail: "extract, patch, encode", icon: Wrench },
-  { label: "ScummVM output", detail: "resources + speech", icon: PackageCheck },
+  { label: "Ultimate Talkie folder", detail: "classic graphics + speech archive", icon: PackageCheck },
 ];
 
 const timeline = [
