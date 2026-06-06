@@ -11,6 +11,16 @@ RELEASE_SH = ROOT / "scripts" / "release.sh"
 RELEASE_PLEASE_CONFIG = ROOT / "release-please-config.json"
 RELEASE_PLEASE_MANIFEST = ROOT / ".release-please-manifest.json"
 RELEASE_PLEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-please.yml"
+PYPROJECT = ROOT / "pyproject.toml"
+PACKAGE_INIT = ROOT / "scummkit" / "__init__.py"
+
+
+def _pyproject_version() -> str:
+    for line in PYPROJECT.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("version = "):
+            return line.split("=", 1)[1].strip().strip('"')
+    raise AssertionError("missing pyproject.toml project version")
 
 
 def test_install_script_is_valid_posix_shell() -> None:
@@ -128,12 +138,14 @@ def test_install_script_updates_shell_profile_when_bin_dir_not_on_path(tmp_path:
 def test_release_please_manifest_tracks_project_version() -> None:
     config = json.loads(RELEASE_PLEASE_CONFIG.read_text(encoding="utf-8"))
     manifest = json.loads(RELEASE_PLEASE_MANIFEST.read_text(encoding="utf-8"))
+    version = _pyproject_version()
 
     package = config["packages"]["."]
     assert package["release-type"] == "python"
     assert package["package-name"] == "scummkit"
     assert "scummkit/__init__.py" in package["extra-files"]
-    assert manifest["."] == "0.3.0"
+    assert manifest["."] == version
+    assert f'__version__ = "{version}"' in PACKAGE_INIT.read_text(encoding="utf-8")
 
 
 def test_release_please_workflow_uploads_installer_asset() -> None:
