@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import subprocess
 
 
@@ -6,6 +7,9 @@ ROOT = Path(__file__).resolve().parent.parent
 INSTALL_SH = ROOT / "install.sh"
 TEST_INSTALL_SH = ROOT / "scripts" / "test-install.sh"
 RELEASE_SH = ROOT / "scripts" / "release.sh"
+RELEASE_PLEASE_CONFIG = ROOT / "release-please-config.json"
+RELEASE_PLEASE_MANIFEST = ROOT / ".release-please-manifest.json"
+RELEASE_PLEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release-please.yml"
 
 
 def test_install_script_is_valid_posix_shell() -> None:
@@ -68,3 +72,24 @@ def test_install_script_dry_run_with_archive_override(tmp_path: Path) -> None:
     assert "SCUMMKit install plan:" in result.stdout
     assert "version:      v0.3.0" in result.stdout
     assert "No files were changed." in result.stdout
+
+
+def test_release_please_manifest_tracks_project_version() -> None:
+    config = json.loads(RELEASE_PLEASE_CONFIG.read_text(encoding="utf-8"))
+    manifest = json.loads(RELEASE_PLEASE_MANIFEST.read_text(encoding="utf-8"))
+
+    package = config["packages"]["."]
+    assert package["release-type"] == "python"
+    assert package["package-name"] == "scummkit"
+    assert "scummkit/__init__.py" in package["extra-files"]
+    assert manifest["."] == "0.3.0"
+
+
+def test_release_please_workflow_uploads_installer_asset() -> None:
+    text = RELEASE_PLEASE_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "googleapis/release-please-action@v4" in text
+    assert "release-please-config.json" in text
+    assert ".release-please-manifest.json" in text
+    assert "gh release upload" in text
+    assert "install.sh --clobber" in text

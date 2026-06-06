@@ -61,12 +61,14 @@ if [ -n "$(git status --short)" ] && [ "$DRY_RUN" != "1" ]; then
     fail "working tree is dirty; commit or stash changes before releasing"
 fi
 
-if git rev-parse "$VERSION" >/dev/null 2>&1 && [ "$DRY_RUN" != "1" ]; then
-    fail "tag already exists locally: $VERSION"
-fi
+if [ "$DRY_RUN" != "1" ]; then
+    if git rev-parse "$VERSION" >/dev/null 2>&1; then
+        fail "tag already exists locally: $VERSION"
+    fi
 
-if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1 && [ "$DRY_RUN" != "1" ]; then
-    fail "tag already exists on origin: $VERSION"
+    if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+        fail "tag already exists on origin: $VERSION"
+    fi
 fi
 
 pyproject_version=$(python3 - <<'PY'
