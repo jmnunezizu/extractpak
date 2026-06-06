@@ -141,16 +141,12 @@ function App() {
       <main>
         <section className="summaryBand" aria-label="Current support">
           <div>
-            <span className="metric">Monkey 1</span>
-            <span>The Secret of Monkey Island, Ogg validated</span>
+            <span className="metric">Monkey Island</span>
+            <span>The Secret of Monkey Island, with Ogg speech, root music, and SBL sound effects</span>
           </div>
           <div>
-            <span className="metric">Monkey 2</span>
-            <span>LeChuck's Revenge, Ogg primary with FLAC/MP3 paths</span>
-          </div>
-          <div>
-            <span className="metric">Local only</span>
-            <span>No commercial game assets or generated outputs shipped</span>
+            <span className="metric">Monkey Island 2</span>
+            <span>LeChuck's Revenge, Ogg primary with FLAC/MP3 speech archive paths</span>
           </div>
         </section>
 
