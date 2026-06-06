@@ -115,23 +115,6 @@ Audio encoder support:
 - FLAC: `flac` or `ffmpeg`.
 - MP3: `lame` or `ffmpeg`.
 
-### Doctor Command
-
-`scummkit doctor` checks the assumptions that the native build pipeline relies
-on before you start a long build:
-
-```bash
-python3 -m scummkit doctor
-python3 -m scummkit doctor --out /tmp/scummkit-test
-python3 -m scummkit doctor --json
-```
-
-It verifies the Python version, required external tools (`ffmpeg`, `sox`,
-`vgmstream-cli`, and the local `extractpak` helper), package import health, and
-optionally whether an output directory can be written. It exits with status `0`
-when all required checks pass and non-zero when any required check fails.
-Use `--json` when you need machine-readable output for scripts or CI probes.
-
 ## Quick Start
 
 Check your local tools and Python package first:
@@ -162,72 +145,6 @@ python3 -m scummkit build mi2 \
 Add the generated output folder to ScummVM, not the original Special Edition
 installation folder.
 
-## CLI Reference
-
-Use `python3 -m scummkit --help` to list commands, and
-`python3 -m scummkit <command> --help` for command-specific options.
-
-| Command | When to use it |
-| ------- | -------------- |
-| `doctor` | Check Python, external tools, local `extractpak`, imports, and optional output-directory write access before starting a build. |
-| `build mi1` / `build mi2` | Generate a complete ScummVM-compatible output folder for a supported game. |
-| `builder-inputs mi1` / `builder-inputs mi2` | Confirm whether SCUMMKit is using bundled Ultimate Talkie patch/table data or data from an optional original builder folder. |
-| `xwb` | Inspect or extract a Special Edition XACT wave bank. Useful when checking whether speech, music, ambience, or sound-effect entries exist in local game assets. |
-| `monster` | Build or verify a ScummVM speech archive from processed samples and `monster.tbl`. Useful for isolating archive packing issues from the full build. |
-| `wav2sbl` | Convert an 8-bit mono PCM WAV file into an MI1 SBL sound-effect chunk, or inspect an existing SBL file. |
-| `inject mi1 sbl` | Inject MI1 SBL sound effects into `monkey.000`/`monkey.001` without running the full MI1 build again. |
-| `inspect mi1 resources` | List indexed MI1 SCUMM resources in a generated output folder. |
-| `inspect mi1 room` | List the scripts, sounds, costumes, and charsets attached to one MI1 room. |
-| `inspect mi1 resource` | Show or dump one indexed MI1 resource for low-level patch/debug work. |
-| `room-audio-report mi1` | Summarise one MI1 room's sound resources, scripts, ambience cues, and root music track references. This is the fastest starting point for missing-room-audio investigations. |
-| `ambience-report mi1` | Map MI1 Special Edition ambience cue names to `Ambience.xwb` entries. Useful when tracing SE ambience coverage. |
-| `script-reference-report mi1` | Scan MI1 scripts for candidate room, sound, or root-track byte references. Useful when a room behaves differently from the expected audio plan. |
-| `speech-manifest mi1` | Generate a manifest from MI1 `speech.info`, optionally compare it with `monster.tbl`, and write a generated table for analysis. |
-| `patch-diff mi1` | Compare original and patched MI1 SCUMM resource files, with optional JSON reports and sound-plan classification. |
-| `bsdiff-inspect` | Inspect a raw BSDIFF40 patch file when debugging patch size, block structure, or provenance. |
-
-Typical troubleshooting flow:
-
-1. Run `doctor` first to rule out missing tools and write-permission issues.
-2. Use `builder-inputs` if a build unexpectedly reads different patch/table
-   data than you intended.
-3. Use `room-audio-report mi1` for missing MI1 music, ambience, or sound
-   effects in a specific room.
-4. Use `inspect mi1 room` or `inspect mi1 resource` when the report points to
-   a specific SCUMM room or resource.
-5. Use `xwb`, `speech-manifest`, `monster`, or `patch-diff` when you need to
-   isolate one asset format or one pipeline stage from the full build.
-
-## Extracting GOG Installers
-
-If you downloaded the Windows installers from GOG, extract them first with
-`innoextract`.
-
-```bash
-brew install innoextract
-```
-
-Extract The Secret of Monkey Island: Special Edition:
-
-```bash
-innoextract -d MonkeyIsland setup_the_secret_of_monkey_islandtm_special_edition_1.0_\(18587\).exe
-```
-
-Extract Monkey Island™ 2 Special Edition: LeChuck’s Revenge:
-
-```bash
-innoextract -d MonkeyIsland2 setup_monkey_island2_se_2.0.0.10.exe
-```
-
-Typical resulting paths:
-
-```text
-MonkeyIsland/Monkey1.pak
-MonkeyIsland/audio/
-MonkeyIsland2/app/monkey2.pak
-MonkeyIsland2/app/audio/
-```
-
 ## Support Matrix
 
 | Game                               | Build support                       | Notes                                                                                                                                                                                                     |
@@ -246,6 +163,21 @@ MonkeyIsland2/app/audio/
 | Monkey Island 2: LeChuck's Revenge | `--audio` | `ogg`, `flac`, `mp3` | `ogg` | Ogg is the primary validated target. Raw `monster.sou` generation is not implemented. |
 
 ## Building Monkey Island 1
+
+If you downloaded the GOG Windows installer, extract it first with
+`innoextract`. On macOS, install it with `brew install innoextract`; on Linux,
+use your package manager.
+
+```bash
+innoextract -d MonkeyIsland setup_the_secret_of_monkey_islandtm_special_edition_1.0_\(18587\).exe
+```
+
+The build uses these extracted paths:
+
+```text
+MonkeyIsland/Monkey1.pak
+MonkeyIsland/audio/
+```
 
 ```bash
 python3 -m scummkit build mi1 \
@@ -327,6 +259,21 @@ For that reason, `hybrid` keeps CD `track8.ogg`. Use `--music se` if you want
 the SCUMM Bar chatter ambience in root playback.
 
 ## Building Monkey Island 2
+
+If you downloaded the GOG Windows installer, extract it first with
+`innoextract`. On macOS, install it with `brew install innoextract`; on Linux,
+use your package manager.
+
+```bash
+innoextract -d MonkeyIsland2 setup_monkey_island2_se_2.0.0.10.exe
+```
+
+The build uses these extracted paths:
+
+```text
+MonkeyIsland2/app/monkey2.pak
+MonkeyIsland2/app/audio/
+```
 
 ```bash
 python3 -m scummkit build mi2 \
@@ -631,6 +578,93 @@ The native builders use the bundled patch/table data by default. `--builder`
 can still point at a local original Ultimate Talkie builder folder when you
 want to compare against or override the bundled files. The analysis notes in
 `docs/` record the behavior currently implemented.
+
+## CLI Reference
+
+Use `python3 -m scummkit --help` to list commands, and
+`python3 -m scummkit <command> --help` for command-specific options.
+
+Command shape:
+
+```text
+scummkit
+├── doctor
+├── build {mi1,mi2}
+├── builder-inputs {mi1,mi2}
+├── inspect mi1 {resources,room,resource}
+├── inject mi1 sbl
+├── room-audio-report mi1
+├── ambience-report mi1
+├── script-reference-report mi1
+├── speech-manifest mi1
+├── patch-diff mi1
+├── xwb
+├── monster
+├── wav2sbl
+└── bsdiff-inspect
+```
+
+### Build and Environment
+
+These are the commands most users need for normal builds.
+
+| Command | What it does | Use it when |
+| ------- | ------------ | ----------- |
+| `doctor` | Checks Python, external tools, the local `extractpak` helper, package imports, and optional output-directory write access. Supports text and `--json` output. | You are setting up SCUMMKit, changing machines, or debugging an early build failure. |
+| `build mi1` | Builds a complete The Secret of Monkey Island output folder. | You want a playable MI1 Ultimate Talkie Edition folder for ScummVM. |
+| `build mi2` | Builds a complete Monkey Island 2 output folder. | You want a playable MI2 Ultimate Talkie Edition folder for ScummVM. |
+| `builder-inputs mi1` | Reports MI1 patch/table data sources. | You want to confirm whether bundled data or an optional original builder folder is being used. |
+| `builder-inputs mi2` | Reports MI2 patch/table data sources. | You want to confirm whether bundled data or an optional original builder folder is being used. |
+
+### Asset and Archive Utilities
+
+These commands operate on one asset format or one pipeline stage. They are
+useful when a full build fails and you want to isolate the failing step.
+
+| Command | What it does | Use it when |
+| ------- | ------------ | ----------- |
+| `xwb` | Lists or extracts entries from a Special Edition XACT wave bank. | You need to check whether a speech, music, ambience, or sound-effect entry exists in local game assets. |
+| `monster` | Builds or verifies a ScummVM speech archive from processed samples and `monster.tbl`. | You want to test archive packing independently from the full build. |
+| `wav2sbl` | Converts an 8-bit mono PCM WAV file into an MI1 SBL chunk, or inspects an existing SBL file. | You are debugging one MI1 sound-effect resource. |
+| `inject mi1 sbl` | Injects MI1 SBL sound effects into `monkey.000`/`monkey.001`. | You want to rerun SBL injection without rebuilding every MI1 asset. |
+
+### MI1 Inspection and Troubleshooting
+
+These commands inspect generated MI1 SCUMM resources and the audio wiring
+around them. They are the main tools for investigating missing music,
+ambience, sound effects, or room-specific behavior.
+
+| Command | What it does | Use it when |
+| ------- | ------------ | ----------- |
+| `inspect mi1 resources` | Lists indexed scripts, sounds, costumes, and charsets. | You need a broad inventory of generated MI1 resources. |
+| `inspect mi1 room` | Lists resources attached to one room. | You know the room id and want to see what the patched game contains there. |
+| `inspect mi1 resource` | Shows or dumps one indexed resource. | You need to inspect one script or sound resource directly. |
+| `room-audio-report mi1` | Summarises one room's sounds, scripts, ambience cues, and root music references. | You are starting a missing-room-audio investigation. |
+| `ambience-report mi1` | Maps Special Edition ambience cue names to `Ambience.xwb` entries. | You are tracing whether a specific SE ambience cue can be found locally. |
+| `script-reference-report mi1` | Scans scripts for candidate room, sound, or root-track byte references. | You need to understand why a room points at different audio than expected. |
+
+### Patch Analysis
+
+These commands are primarily for reverse engineering, provenance checks, and
+comparing generated data against authored Ultimate Talkie patch data.
+
+| Command | What it does | Use it when |
+| ------- | ------------ | ----------- |
+| `speech-manifest mi1` | Builds a manifest from MI1 `speech.info`, can write a generated `monster.tbl`-style table, and can compare with an existing table. | You are analysing speech coverage or investigating the gap between SE metadata and the authored table. |
+| `patch-diff mi1` | Compares original and patched MI1 SCUMM resource files, with optional JSON reports and sound-plan classification. | You want to understand what the Ultimate Talkie patch changes inside MI1 resources. |
+| `bsdiff-inspect` | Inspects a raw BSDIFF40 patch file. | You are debugging patch size, block structure, or patch provenance. |
+
+Typical troubleshooting flow:
+
+1. Run `doctor` first to rule out missing tools and write-permission issues.
+2. Use `builder-inputs` if a build unexpectedly reads different patch/table
+   data than you intended.
+3. Use `room-audio-report mi1` for missing MI1 music, ambience, or sound
+   effects in a specific room.
+4. Use `inspect mi1 room` or `inspect mi1 resource` when the report points to
+   a specific SCUMM room or resource.
+5. Use `xwb`, `speech-manifest`, `monster`, or `patch-diff` when you need to
+   isolate one asset format or one pipeline stage from the full build.
 
 ## Credits
 
