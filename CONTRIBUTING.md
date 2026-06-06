@@ -62,6 +62,12 @@ SCUMMKIT_TEST_INSTALL_KEEP=1 scripts/test-install.sh
 - Create feature branches from `main`.
 - Use focused branch names such as `feature/8-installer-distribution`.
 - Keep commits scoped to one behavior or documentation change.
+- Use conventional commit messages so release-please can classify changes:
+  - `feat: add MI1 install smoke test`
+  - `fix: report missing extractpak as actionable error`
+  - `docs: clarify installer options`
+  - `test: cover release script syntax`
+- Use `feat!:` or a `BREAKING CHANGE:` footer only for breaking changes.
 - Do not commit local game assets, generated game output, or files extracted
   from personally owned game installations.
 
@@ -88,26 +94,33 @@ If you change installer behavior, update:
 
 ## Releases
 
-Releases are created from a clean `main` checkout:
+Release PRs are maintained by release-please from conventional commits merged
+to `main`. The release-please workflow updates:
 
-```bash
-scripts/release.sh v0.3.0
-```
+- `CHANGELOG.md`
+- `pyproject.toml`
+- `scummkit/__init__.py`
+- `.release-please-manifest.json`
 
-Use a dry run first:
-
-```bash
-scripts/release.sh --dry-run v0.3.0
-```
-
-The release script validates versions, runs checks, smoke-tests the installer,
-creates and pushes the tag, creates the GitHub release, and uploads
-`install.sh` as a release asset. The public install command depends on that
-asset:
+When the release PR is merged, release-please creates the GitHub release. The
+workflow then uploads `install.sh` as a release asset so the public install
+command works:
 
 ```bash
 curl -fsSL https://github.com/jmnunezizu/scummkit/releases/latest/download/install.sh | sh
 ```
+
+The manual release script remains available as a fallback from a clean `main`
+checkout:
+
+```bash
+scripts/release.sh --dry-run v0.3.0
+scripts/release.sh v0.3.0
+```
+
+Use the manual script only when release-please is not suitable for a given
+release. It validates versions, runs checks, smoke-tests the installer, creates
+and pushes the tag, creates the GitHub release, and uploads `install.sh`.
 
 ## Legal and Asset Handling
 

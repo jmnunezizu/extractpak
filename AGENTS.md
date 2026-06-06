@@ -30,12 +30,21 @@ assets and generating ScummVM-compatible Ultimate Talkie Edition outputs.
   verbose builds.
 - Avoid destructive commands. Do not remove user-generated build outputs unless
   the command or existing code path clearly owns that output directory.
+- Use conventional commit messages for commits intended to merge to `main`,
+  such as `feat: ...`, `fix: ...`, `docs: ...`, `test: ...`, or
+  `chore: ...`. Release notes and version bumps are managed by release-please.
+- Keep installer and release automation user-local and non-sudo by default.
+  The installer must not install system packages; it should report missing
+  runtime tools through `scummkit doctor`.
 
 ## Validation
 
 Run the lightweight checks after code changes:
 
 ```bash
+sh -n install.sh
+sh -n scripts/test-install.sh
+sh -n scripts/release.sh
 PYTHONPYCACHEPREFIX=/tmp/extractpak-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py scummkit/builders/*.py
 python3 -m pytest
 ```
@@ -44,6 +53,18 @@ Compile the C extractor after `extractpak.c` changes:
 
 ```bash
 clang extractpak.c -o extractpak
+```
+
+Smoke-test installer changes with a temporary local archive:
+
+```bash
+scripts/test-install.sh
+```
+
+Check release automation without creating tags or releases:
+
+```bash
+scripts/release.sh --dry-run v0.3.0
 ```
 
 Useful real-build smoke commands when local assets are available:
@@ -69,6 +90,11 @@ python3 -m scummkit build mi2 \
 
 ```text
 .
+├── .github/
+│   └── workflows/                    # CI and release-please automation.
+├── scripts/                          # Installer and release validation helpers.
+│   ├── release.sh                    # Manual release fallback and release asset upload helper.
+│   └── test-install.sh               # Local archive installer smoke test.
 ├── docs/                              # Reverse-engineering notes and builder analysis.
 │   ├── mi1-ultimate-talkie-builder-analysis.md  # MI1 builder pipeline, formats, and parity notes.
 │   └── mi2-ultimate-talkie-builder-analysis.md  # MI2 builder pipeline, formats, and packer notes.
@@ -92,16 +118,40 @@ python3 -m scummkit build mi2 \
 │   └── xwb.py                         # XACT wave bank parser and extractor.
 ├── tests/                             # pytest suite for the Python package.
 │   ├── test_cli.py                    # CLI parsing and dry-run behavior tests.
+│   ├── test_install_script.py         # Installer/release script smoke tests.
 │   ├── test_monster.py                # monster.tbl and speech archive packer tests.
 │   ├── test_sbl.py                    # WAV-to-SBL conversion tests.
 │   └── test_xwb.py                    # XWB parser tests.
 ├── AGENTS.md                          # Instructions and orientation notes for coding agents.
+├── CHANGELOG.md                       # release-please-maintained changelog.
+├── CONTRIBUTING.md                    # Contributor setup, validation, and release notes.
 ├── LICENSE                            # MIT license for local modifications and documentation.
 ├── NOTICE                             # Attribution and upstream licensing notes.
 ├── README.md                          # Public project documentation and user guide.
+├── install.sh                         # User-local installer, uploaded as a release asset.
+├── release-please-config.json         # release-please package/releaser config.
+├── .release-please-manifest.json      # release-please version manifest.
 ├── extractpak.c                       # C PAK extractor; must compile with `clang extractpak.c -o extractpak`.
 └── pyproject.toml                     # Python project metadata and pytest configuration.
 ```
+
+## Release Automation
+
+Release PRs are managed by release-please from conventional commits merged to
+`main`. The release-please workflow should update `CHANGELOG.md`,
+`pyproject.toml`, `scummkit/__init__.py`, and
+`.release-please-manifest.json`.
+
+When release-please creates a GitHub release, the workflow uploads `install.sh`
+as a release asset. The public install URL depends on that asset:
+
+```bash
+curl -fsSL https://github.com/jmnunezizu/scummkit/releases/latest/download/install.sh | sh
+```
+
+Keep `scripts/release.sh` as a manual fallback for cases where release-please
+is not appropriate. Do not run it for real unless the user explicitly asks for
+a release.
 
 ## Common Commands
 
