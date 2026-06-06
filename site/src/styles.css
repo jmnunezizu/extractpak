@@ -561,6 +561,13 @@ footer p {
   color: rgba(255, 250, 240, 0.72);
 }
 
+footer .trademarkNote {
+  max-width: 760px;
+  color: rgba(255, 250, 240, 0.54);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 footer a {
   display: inline-flex;
   align-items: center;

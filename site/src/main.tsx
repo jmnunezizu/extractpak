@@ -311,6 +311,10 @@ function App() {
         <div>
           <img src={logoUrl} alt="SCUMMKit" />
           <p>Open-source tooling for local, legally owned game preservation workflows.</p>
+          <p className="trademarkNote">
+            Monkey Island is a trademark of Lucasfilm Ltd. ScummVM is a trademark of the ScummVM project.
+            SCUMMKit is independent and is not affiliated with or endorsed by Lucasfilm, Disney, or ScummVM.
+          </p>
         </div>
         <a href="https://github.com/jmnunezizu/scummkit">
           <HeartHandshake size={18} />
