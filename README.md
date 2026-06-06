@@ -86,7 +86,8 @@ SCUMMKit includes the minimal patch/table data with permission.
 
    The installer downloads the tagged release archive, installs it under
    `~/.local/share/scummkit`, creates a Python virtual environment, compiles
-   `extractpak`, and writes `~/.local/bin/scummkit`.
+   `extractpak`, writes `~/.local/bin/scummkit`, and adds `~/.local/bin` to
+   your shell startup file when it is not already on `PATH`.
 
 3. Verify the SCUMMKit environment:
 
@@ -95,7 +96,8 @@ SCUMMKit includes the minimal patch/table data with permission.
    scummkit doctor --out /tmp/scummkit-test
    ```
 
-If your shell cannot find `scummkit`, add `~/.local/bin` to `PATH`.
+If your current shell cannot find `scummkit` immediately after installation,
+run the export command printed by the installer or open a new shell.
 
 ### Installer Options
 

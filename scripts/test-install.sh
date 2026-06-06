@@ -40,6 +40,7 @@ info "Running installer into $TMP_DIR"
 SCUMMKIT_ARCHIVE_URL="file://$archive" \
 SCUMMKIT_HOME="$home_dir" \
 SCUMMKIT_BIN_DIR="$bin_dir" \
+SCUMMKIT_NO_PATH_UPDATE=1 \
 SCUMMKIT_VERSION="$VERSION" \
 "$ROOT/install.sh"
 

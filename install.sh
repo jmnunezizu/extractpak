@@ -16,6 +16,8 @@ Environment:
   SCUMMKIT_ARCHIVE_URL   Override release archive URL, mainly for tests
   SCUMMKIT_REPO_OWNER    GitHub owner. Default: jmnunezizu
   SCUMMKIT_REPO_NAME     GitHub repo. Default: scummkit
+  SCUMMKIT_NO_PATH_UPDATE
+                          Set to 1 to skip shell profile updates
   PYTHON                 Python executable. Default: python3
   CC                     C compiler. Default: first of clang, cc, gcc
 
@@ -84,6 +86,66 @@ find_compiler() {
         fi
     done
     fail "missing C compiler; install clang, cc, or gcc"
+}
+
+profile_path() {
+    shell_name=$(basename "${SHELL:-}")
+    case "$shell_name" in
+        zsh) printf '%s\n' "$HOME/.zshrc" ;;
+        bash)
+            if [ -f "$HOME/.bash_profile" ]; then
+                printf '%s\n' "$HOME/.bash_profile"
+            else
+                printf '%s\n' "$HOME/.bashrc"
+            fi
+            ;;
+        fish) printf '%s\n' "" ;;
+        *) printf '%s\n' "$HOME/.profile" ;;
+    esac
+}
+
+ensure_bin_on_path() {
+    case ":$PATH:" in
+        *":$BIN_DIR:"*)
+            return
+            ;;
+    esac
+
+    profile=$(profile_path)
+    info ""
+    info "Add this directory to PATH for the current shell:"
+    info "  export PATH=\"$BIN_DIR:\$PATH\""
+
+    if [ "${SCUMMKIT_NO_PATH_UPDATE:-}" = "1" ]; then
+        info ""
+        info "Skipping shell profile update because SCUMMKIT_NO_PATH_UPDATE=1."
+        return
+    fi
+
+    if [ -z "$profile" ]; then
+        info ""
+        info "Automatic PATH setup is not supported for your shell."
+        return
+    fi
+
+    mkdir -p "$(dirname "$profile")"
+    touch "$profile"
+    if grep -F "SCUMMKit installer" "$profile" >/dev/null 2>&1; then
+        info ""
+        info "PATH setup already exists in $profile."
+        return
+    fi
+
+    {
+        printf '\n'
+        printf '# SCUMMKit installer\n'
+        printf 'export PATH="%s:$PATH"\n' "$BIN_DIR"
+    } >>"$profile"
+
+    info ""
+    info "Added SCUMMKit to PATH for future shells in:"
+    info "  $profile"
+    info "Open a new shell, or run the export command above now."
 }
 
 resolve_latest_version() {
@@ -166,15 +228,7 @@ mv "$staging_dir" "$INSTALL_DIR"
 mv "$wrapper" "$BIN_DIR/scummkit"
 
 info "Installed scummkit command at $BIN_DIR/scummkit"
-
-case ":$PATH:" in
-    *":$BIN_DIR:"*) ;;
-    *)
-        info ""
-        info "Add this directory to PATH if your shell cannot find scummkit:"
-        info "  $BIN_DIR"
-        ;;
-esac
+ensure_bin_on_path
 
 info ""
 info "Running scummkit doctor"
