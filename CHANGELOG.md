@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/jmnunezizu/scummkit/compare/v0.3.2...v0.3.3) (2026-06-06)
+
+
+### Bug Fixes
+
+* align build audio choices ([#22](https://github.com/jmnunezizu/scummkit/issues/22)) ([78e7ee7](https://github.com/jmnunezizu/scummkit/commit/78e7ee7f442521dab0592e0d0ca0c87f2a3258fb))
+
 ## [0.3.2](https://github.com/jmnunezizu/scummkit/compare/v0.3.1...v0.3.2) (2026-06-06)
 
 
