@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jmnunezizu.github.io/scummkit/sitemap.xml
