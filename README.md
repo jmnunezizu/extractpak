@@ -254,8 +254,8 @@ Options:
 - `--builder PATH`: optional path to the extracted MI1 Ultimate Talkie builder
   folder; defaults to bundled patch/table data.
 - `--out PATH`: output folder to create.
-- `--audio ogg|flac|mp3`: target compressed speech format. MI1 is validated
-  for `ogg`.
+- `--audio ogg`: target compressed speech format. FLAC/MP3/raw are not
+  currently validated for MI1.
 - `--music cd|hybrid|se`: root soundtrack selection. Use `se` for the fullest
   Special Edition music and ambience path. CLI default: `hybrid`.
 - `--skip-sbl`: skip native SBL sound-effect injection.

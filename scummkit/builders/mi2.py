@@ -30,6 +30,7 @@ SPEC = BuildSpec(
     game="mi2",
     title="Monkey Island 2 Ultimate Talkie",
     help="build Monkey Island 2 Ultimate Talkie",
+    audio_choices=mi2.SUPPORTED_AUDIO,
     add_arguments=add_arguments,
     build_options=build_options,
     run=run,

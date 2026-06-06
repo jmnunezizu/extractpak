@@ -12,6 +12,9 @@ from .runner import BuildError, Runner, require_dir, require_file
 from .summary import BuildSummary, print_build_summary
 
 
+SUPPORTED_AUDIO = ("ogg", "flac", "mp3")
+
+
 @dataclass
 class BuildOptions:
     pak: Path
@@ -25,9 +28,9 @@ class BuildOptions:
 
 def archive_name(audio: str) -> str:
     try:
-        return {"ogg": "monkey2.sog", "flac": "monkey2.sof", "mp3": "monkey2.so3", "raw": "monster.sou"}[audio]
+        return {"ogg": "monkey2.sog", "flac": "monkey2.sof", "mp3": "monkey2.so3"}[audio]
     except KeyError as error:
-        raise BuildError("unsupported MI2 audio format: use --audio ogg, flac, mp3, or raw") from error
+        raise BuildError("unsupported MI2 audio format: use --audio ogg, flac, or mp3; raw monster.sou is not implemented") from error
 
 
 def _stage(runner: Runner, progress: BuildProgress, index: int, total: int, label: str) -> None:
@@ -54,6 +57,8 @@ def build(options: BuildOptions) -> None:
     started = time.monotonic()
     runner = Runner(options.dry_run, options.verbose, options.quiet)
     progress = BuildProgress(5, enabled=options.quiet)
+    if options.audio not in SUPPORTED_AUDIO:
+        raise BuildError("unsupported MI2 audio format: use --audio ogg, flac, or mp3; raw monster.sou is not implemented")
     pak = options.pak.expanduser()
     patch_data_source = resolve_patch_data_source("mi2", options.builder)
     patch_data = patch_data_source.data_dir
@@ -159,8 +164,6 @@ def build(options: BuildOptions) -> None:
     )
     _stage_done(progress, "Extracting and encoding voices")
 
-    if options.audio == "raw":
-        raise BuildError("raw monster.sou generation is not implemented yet; use ogg, flac, or mp3")
     archive = out / archive_name(options.audio)
     _stage(runner, progress, 5, 5, "Building speech archive")
     try:

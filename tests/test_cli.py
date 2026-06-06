@@ -222,12 +222,56 @@ def test_builders_register_expected_games() -> None:
     specs = all_builders()
 
     assert [spec.game for spec in specs] == ["mi1", "mi2"]
+    assert {spec.game: spec.audio_choices for spec in specs} == {
+        "mi1": ("ogg",),
+        "mi2": ("ogg", "flac", "mp3"),
+    }
     for spec in specs:
         assert spec.title
         assert spec.help
         assert callable(spec.add_arguments)
         assert callable(spec.build_options)
         assert callable(spec.run)
+
+
+def test_build_parser_uses_game_specific_audio_choices() -> None:
+    parser = cli.build_parser()
+
+    for audio in ("flac", "mp3", "raw"):
+        with pytest.raises(SystemExit):
+            parser.parse_args(["build", "mi1", "--pak", "p", "--out", "o", "--audio", audio])
+
+    for audio in ("ogg", "flac", "mp3"):
+        args = parser.parse_args(["build", "mi2", "--pak", "p", "--out", "o", "--audio", audio])
+        assert args.audio == audio
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["build", "mi2", "--pak", "p", "--out", "o", "--audio", "raw"])
+
+
+def test_build_help_shows_game_specific_audio_choices(capsys) -> None:
+    parser = cli.build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["build", "mi1", "--help"])
+    mi1_help = capsys.readouterr().out
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["build", "mi2", "--help"])
+    mi2_help = capsys.readouterr().out
+
+    assert "--audio {ogg}" in mi1_help
+    assert "--audio {ogg,flac,mp3}" in mi2_help
+    assert "--audio {ogg,flac,mp3,raw}" not in mi1_help
+    assert "--audio {ogg,flac,mp3,raw}" not in mi2_help
+
+
+def test_mi2_archive_name_rejects_raw_with_actionable_error() -> None:
+    from scummkit import mi2
+    from scummkit.runner import BuildError
+
+    with pytest.raises(BuildError, match="raw monster\\.sou is not implemented"):
+        mi2.archive_name("raw")
 
 
 def test_build_parser_attaches_builder_specs() -> None:

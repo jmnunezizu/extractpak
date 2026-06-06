@@ -10,6 +10,7 @@ class BuildSpec:
     game: str
     title: str
     help: str
+    audio_choices: tuple[str, ...]
     add_arguments: Callable[[argparse.ArgumentParser], None]
     build_options: Callable[[argparse.Namespace], Any]
     run: Callable[[Any], None]
