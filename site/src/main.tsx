@@ -20,6 +20,8 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
+import type { ThemeId } from "./siteConfig";
+import { siteConfig } from "./siteConfig";
 import "./styles.css";
 
 const installCommand =
@@ -38,11 +40,11 @@ const heroStyle = {
 } as CSSProperties;
 
 const themes = [
-  { id: "parchment", label: "Parchment" },
   { id: "harbor", label: "Harbor" },
-  { id: "boxart", label: "Box Art" },
-  { id: "workbench", label: "Workbench" },
-];
+  { id: "harbor-deep", label: "Deep" },
+  { id: "harbor-moon", label: "Moonlit" },
+  { id: "harbor-chart", label: "Chartroom" },
+] satisfies Array<{ id: ThemeId; label: string }>;
 
 const capabilities: Feature[] = [
   {
@@ -107,26 +109,28 @@ const technicalNotes: Feature[] = [
 ];
 
 function App() {
-  const [theme, setTheme] = useState("parchment");
+  const [theme, setTheme] = useState<ThemeId>(siteConfig.defaultTheme);
 
   return (
     <div className="siteShell" data-theme={theme}>
-      <aside className="themeLab" aria-label="Theme selector">
-        <span>Theme</span>
-        <div>
-          {themes.map((item) => (
-            <button
-              className={theme === item.id ? "active" : ""}
-              key={item.id}
-              type="button"
-              onClick={() => setTheme(item.id)}
-              aria-pressed={theme === item.id}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </aside>
+      {siteConfig.showThemeSelector && (
+        <aside className="themeLab" aria-label="Theme selector">
+          <span>Theme</span>
+          <div>
+            {themes.map((item) => (
+              <button
+                className={theme === item.id ? "active" : ""}
+                key={item.id}
+                type="button"
+                onClick={() => setTheme(item.id)}
+                aria-pressed={theme === item.id}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </aside>
+      )}
 
       <header className="hero">
         <div className="heroBackdrop" style={heroStyle} aria-hidden="true" />
