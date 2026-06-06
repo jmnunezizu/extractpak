@@ -2,6 +2,12 @@
 
 # SCUMMKit
 
+[![Release](https://img.shields.io/github/v/release/jmnunezizu/scummkit?sort=semver)](https://github.com/jmnunezizu/scummkit/releases/latest)
+[![CI](https://github.com/jmnunezizu/scummkit/actions/workflows/ci.yml/badge.svg)](https://github.com/jmnunezizu/scummkit/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20WSL-lightgrey)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Cross-platform tools for building ScummVM-compatible Monkey Island Ultimate
 Talkie Edition folders from legally owned Special Edition game files.
 
@@ -32,7 +38,8 @@ Supported games:
 - Converts music for The Secret of Monkey Island and supports `cd`, `hybrid`,
   and `se` root soundtrack modes.
 - Provides SCUMM resource inspection and diagnostics commands.
-- Python CLI: `python3 -m scummkit` and installed `scummkit`
+- Python CLI: installed `scummkit` command and `python3 -m scummkit` from a
+  source checkout.
 - Automated pytest coverage for CLI parsing, archive packing, XWB parsing,
   SBL generation, and build diagnostics.
 
@@ -43,7 +50,6 @@ Supported games:
   folder.
 - Python 3.9 or newer.
 - Common command line tools: `sox`, `ffmpeg`, `bspatch`, and `vgmstream-cli`.
-- A compiled local `extractpak` helper.
 - ScummVM to play the generated output folder.
 
 You do not need the original Ultimate Talkie builder folder for normal builds.
@@ -51,25 +57,18 @@ SCUMMKit includes the minimal patch/table data with permission.
 
 ## Install / Setup
 
-1. Clone the repository:
-
-   ```bash
-   git clone <repository-url>
-   cd SCUMMKit
-   ```
-
-2. Install required tools:
+1. Install required runtime tools:
 
    macOS with Homebrew:
 
    ```bash
-   brew install python sox ffmpeg vgmstream
+   brew install python sox ffmpeg vgmstream bsdiff
    ```
 
    Debian/Ubuntu:
 
    ```bash
-   sudo apt install python3 python3-pytest sox ffmpeg bsdiff clang
+   sudo apt install python3 python3-venv python3-pytest sox ffmpeg bsdiff clang
    ```
 
    Install `vgmstream-cli` from your package manager, upstream releases, or
@@ -79,30 +78,80 @@ SCUMMKit includes the minimal patch/table data with permission.
    that provides Python, `bspatch`, `sox`, `ffmpeg`, and `vgmstream-cli` on
    `PATH`.
 
-3. Compile the PAK extractor:
+2. Install SCUMMKit:
 
    ```bash
-   clang extractpak.c -o extractpak
+   curl -fsSL https://github.com/jmnunezizu/scummkit/releases/latest/download/install.sh | sh
    ```
 
-4. Verify the SCUMMKit environment:
+   The installer downloads the tagged release archive, installs it under
+   `~/.local/share/scummkit`, creates a Python virtual environment, compiles
+   `extractpak`, and writes `~/.local/bin/scummkit`.
+
+3. Verify the SCUMMKit environment:
 
    ```bash
-   python3 -m scummkit doctor --out /tmp/scummkit-test
+   scummkit --version
+   scummkit doctor --out /tmp/scummkit-test
    ```
 
-5. Verify the Python package:
+If your shell cannot find `scummkit`, add `~/.local/bin` to `PATH`.
 
-   ```bash
-   PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
-   python3 -m pytest
-   ```
+### Installer Options
+
+Run the installer again to reinstall or upgrade to the latest GitHub release.
+The previous install directory is kept as `~/.local/share/scummkit.previous`.
+
+Install a specific release:
+
+```bash
+curl -fsSL https://github.com/jmnunezizu/scummkit/releases/download/v0.3.0/install.sh | SCUMMKIT_VERSION=v0.3.0 sh
+```
+
+Install to custom user-local paths:
+
+```bash
+curl -fsSL https://github.com/jmnunezizu/scummkit/releases/latest/download/install.sh | \
+  SCUMMKIT_HOME="$HOME/Tools/scummkit" SCUMMKIT_BIN_DIR="$HOME/bin" sh
+```
+
+Preview the install plan without changing files:
+
+```bash
+curl -fsSL https://github.com/jmnunezizu/scummkit/releases/latest/download/install.sh | sh -s -- --dry-run
+```
+
+### Uninstall
+
+Remove the user-local install:
+
+```bash
+rm -rf ~/.local/share/scummkit ~/.local/share/scummkit.previous ~/.local/bin/scummkit
+```
+
+### Manual Source Install
+
+Use this path when developing SCUMMKit or installing from a local checkout:
+
+```bash
+git clone https://github.com/jmnunezizu/scummkit.git
+cd scummkit
+clang extractpak.c -o extractpak
+python3 -m scummkit doctor --out /tmp/scummkit-test
+```
+
+Run the test suite from a checkout with:
+
+```bash
+PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py scummkit/builders/*.py
+python3 -m pytest
+```
 
 ### Tool Requirements
 
 - Python 3.9 or newer: runs the `scummkit` package and tests.
-- `extractpak`: local compiled helper for extracting `classic/en` resources
-  from Monkey Island Special Edition PAK files.
+- `extractpak`: helper compiled by the installer or manually from
+  `extractpak.c`.
 - `bspatch`: applies the Ultimate Talkie binary patch files.
 - `ffmpeg`: decodes WMA/XWMA sound-effect entries where needed.
 - `sox`: performs trim, mix, gain, pad, and audio conversion operations.
@@ -120,13 +169,13 @@ Audio encoder support:
 Check your local tools and Python package first:
 
 ```bash
-python3 -m scummkit doctor --out /tmp/scummkit-test
+scummkit doctor --out /tmp/scummkit-test
 ```
 
 Build Monkey Island 1:
 
 ```bash
-python3 -m scummkit build mi1 \
+scummkit build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
@@ -136,7 +185,7 @@ python3 -m scummkit build mi1 \
 Build Monkey Island 2:
 
 ```bash
-python3 -m scummkit build mi2 \
+scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
   --audio ogg
@@ -180,7 +229,7 @@ MonkeyIsland/audio/
 ```
 
 ```bash
-python3 -m scummkit build mi1 \
+scummkit build mi1 \
   --pak ~/Downloads/MonkeyIsland/Monkey1.pak \
   --out ~/Downloads/ScummVM/MI1_Ultimate_Talkie_Edition \
   --audio ogg \
@@ -276,7 +325,7 @@ MonkeyIsland2/app/audio/
 ```
 
 ```bash
-python3 -m scummkit build mi2 \
+scummkit build mi2 \
   --pak ~/Downloads/MonkeyIsland2/app/monkey2.pak \
   --out ~/Downloads/ScummVM/MI2_Ultimate_Talkie_Edition \
   --audio ogg
@@ -343,15 +392,15 @@ debugging SBL injection or checking whether a sound resource is visible through
 the resource index.
 
 ```bash
-python3 -m scummkit inspect mi1 resources --game-dir /tmp/mi1-test
-python3 -m scummkit inspect mi1 room --game-dir /tmp/mi1-test --room 41
-python3 -m scummkit inspect mi1 resource --game-dir /tmp/mi1-test --room 41 --id 71
+scummkit inspect mi1 resources --game-dir /tmp/mi1-test
+scummkit inspect mi1 room --game-dir /tmp/mi1-test --room 41
+scummkit inspect mi1 resource --game-dir /tmp/mi1-test --room 41 --id 71
 ```
 
 Dump one resource:
 
 ```bash
-python3 -m scummkit inspect mi1 resource \
+scummkit inspect mi1 resource \
   --game-dir /tmp/mi1-test \
   --room 41 \
   --id 71 \
@@ -361,7 +410,7 @@ python3 -m scummkit inspect mi1 resource \
 Compare against a pre-SBL output:
 
 ```bash
-python3 -m scummkit inspect mi1 resource \
+scummkit inspect mi1 resource \
   --game-dir /tmp/mi1-test \
   --compare /tmp/mi1-test/.work/sbl/pre-sbl \
   --room 41 \
@@ -483,7 +532,7 @@ applies bundled Ultimate Talkie patch files, processes `Speech.xwb` and
 Run:
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
+PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py scummkit/builders/*.py
 python3 -m pytest
 ```
 
@@ -491,11 +540,40 @@ The tests cover CLI parsing, dry-run behavior, `monster.tbl` parsing, ScummVM
 monster archive build and verification with tiny fake samples, XWB parser
 behavior, and SBL conversion with generated WAV data.
 
+Test the installer against a temporary local archive:
+
+```bash
+scripts/test-install.sh
+```
+
+Set `SCUMMKIT_TEST_INSTALL_KEEP=1` to keep the temporary install directory for
+inspection.
+
 For syntax-only validation:
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py
+sh -n install.sh
+sh -n scripts/test-install.sh
+sh -n scripts/release.sh
+PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py scummkit/commands/*.py scummkit/builders/*.py
 ```
+
+## Releasing
+
+Maintainers create releases from a clean `main` checkout:
+
+```bash
+scripts/release.sh v0.3.0
+```
+
+The release script validates package versions, runs syntax checks, runs the
+test suite, smoke-tests the installer, creates and pushes the tag, creates the
+GitHub release, and uploads `install.sh` as a release asset. Use
+`scripts/release.sh --dry-run v0.3.0` to print the release actions without
+creating a tag or release.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor setup, validation, and
+release expectations.
 
 ## Project History
 
@@ -581,8 +659,10 @@ want to compare against or override the bundled files. The analysis notes in
 
 ## CLI Reference
 
-Use `python3 -m scummkit --help` to list commands, and
-`python3 -m scummkit <command> --help` for command-specific options.
+Use `scummkit --help` to list commands, `scummkit --version` to print the
+installed version, and `scummkit <command> --help` for command-specific
+options. From a source checkout, `python3 -m scummkit` works as an equivalent
+entry point.
 
 Command shape:
 

@@ -1,7 +1,28 @@
 from pathlib import Path
 
+import pytest
+
+from scummkit import __version__
 from scummkit import cli
 from scummkit.runner import Runner
+
+
+def test_cli_version_argument(capsys) -> None:
+    parser = cli.build_parser()
+
+    with pytest.raises(SystemExit) as error:
+        parser.parse_args(["--version"])
+
+    assert error.value.code == 0
+    assert capsys.readouterr().out == f"scummkit {__version__}\n"
+
+
+def test_cli_main_version_argument(capsys) -> None:
+    with pytest.raises(SystemExit) as error:
+        cli.main(["--version"])
+
+    assert error.value.code == 0
+    assert capsys.readouterr().out == f"scummkit {__version__}\n"
 
 
 def test_cli_argument_parsing() -> None:
