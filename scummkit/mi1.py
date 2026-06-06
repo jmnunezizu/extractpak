@@ -16,6 +16,9 @@ from .runner import BuildError, Runner, require_dir, require_file
 from .summary import BuildSummary, print_build_summary
 
 
+SUPPORTED_AUDIO = ("ogg",)
+
+
 @dataclass
 class BuildOptions:
     pak: Path
@@ -195,7 +198,7 @@ def build(options: BuildOptions) -> None:
     started = time.monotonic()
     runner = Runner(options.dry_run, options.verbose, options.quiet)
     progress = BuildProgress(7, enabled=options.quiet)
-    if options.audio != "ogg":
+    if options.audio not in SUPPORTED_AUDIO:
         raise BuildError("unsupported MI1 audio format: use --audio ogg; FLAC/MP3/raw are not validated for MI1 yet")
     if options.music not in ("cd", "hybrid", "se"):
         raise BuildError("unsupported MI1 music mode: use --music cd, --music hybrid, or --music se")
