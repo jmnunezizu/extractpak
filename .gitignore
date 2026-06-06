@@ -3,3 +3,6 @@ monkey1-classic/
 *.o
 *.dSYM/
 .DS_Store
+site/node_modules/
+site/dist/
+site/tsconfig.tsbuildinfo
