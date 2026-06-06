@@ -149,8 +149,8 @@ function App() {
             <span>LeChuck's Revenge, Ogg primary with FLAC/MP3 paths</span>
           </div>
           <div>
-            <span className="metric">0</span>
-            <span>Commercial game assets shipped</span>
+            <span className="metric">Local only</span>
+            <span>No commercial game assets or generated outputs shipped</span>
           </div>
         </section>
 
