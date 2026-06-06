@@ -1,4 +1,4 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -20,6 +20,7 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
+import { installGoogleAnalytics } from "./analytics";
 import type { ThemeId } from "./siteConfig";
 import { siteConfig } from "./siteConfig";
 import "./styles.css";
@@ -110,6 +111,10 @@ const technicalNotes: Feature[] = [
 
 function App() {
   const [theme, setTheme] = useState<ThemeId>(siteConfig.defaultTheme);
+
+  useEffect(() => {
+    installGoogleAnalytics(siteConfig.googleAnalyticsMeasurementId);
+  }, []);
 
   return (
     <div className="siteShell" data-theme={theme}>
