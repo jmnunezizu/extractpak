@@ -27,8 +27,14 @@ jobs:
       - name: Install package and test dependencies
         run: python -m pip install --upgrade pip pytest
 
+      - name: Check shell scripts
+        run: |
+          sh -n install.sh
+          sh -n scripts/test-install.sh
+          sh -n scripts/release.sh
+
       - name: Compile Python modules
-        run: PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python -m py_compile scummkit/*.py scummkit/commands/*.py
+        run: PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python -m py_compile scummkit/*.py scummkit/commands/*.py scummkit/builders/*.py
 
       - name: Run tests
         run: python -m pytest

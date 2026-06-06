@@ -1,0 +1,12 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "package-name": "scummkit",
+      "include-component-in-tag": false,
+      "extra-files": [
+        "scummkit/__init__.py"
+      ]
+    }
+  }
+}

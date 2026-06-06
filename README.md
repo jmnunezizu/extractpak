@@ -560,17 +560,22 @@ PYTHONPYCACHEPREFIX=/tmp/scummkit-pycache python3 -m py_compile scummkit/*.py sc
 
 ## Releasing
 
-Maintainers create releases from a clean `main` checkout:
+Releases are normally managed by release-please. Conventional commits merged to
+`main` update the release PR with changelog entries and version bumps. Merging
+that release PR creates the GitHub release and uploads `install.sh` as a
+release asset.
+
+The manual release script remains available as a fallback from a clean `main`
+checkout:
 
 ```bash
+scripts/release.sh --dry-run v0.3.0
 scripts/release.sh v0.3.0
 ```
 
-The release script validates package versions, runs syntax checks, runs the
-test suite, smoke-tests the installer, creates and pushes the tag, creates the
-GitHub release, and uploads `install.sh` as a release asset. Use
-`scripts/release.sh --dry-run v0.3.0` to print the release actions without
-creating a tag or release.
+The manual script validates package versions, runs syntax checks, runs the test
+suite, smoke-tests the installer, creates and pushes the tag, creates the
+GitHub release, and uploads `install.sh`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contributor setup, validation, and
 release expectations.
